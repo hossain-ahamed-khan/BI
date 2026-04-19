@@ -2,153 +2,155 @@
 
 import * as React from "react"
 import {
-  AudioWaveform,
-  BookOpen,
-  Bot,
-  Command,
-  Frame,
-  GalleryVerticalEnd,
-  Map,
-  PieChart,
-  Settings2,
-  SquareTerminal,
+  ChartColumnBig,
+  Gem,
+  CircleDot,
+  CalendarDays,
+  Megaphone,
+  Users2,
+  UtensilsCrossed,
+  FileText,
 } from "lucide-react"
+import Image from "next/image"
+import Link from "next/link"
+import mainLogo from "@/public/main-logo.png";
 
 import { NavMain } from "@/components/nav-main"
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
 
-// This is sample data.
 const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
-  teams: [
-    {
-      name: "Acme Inc",
-      logo: GalleryVerticalEnd,
-      plan: "Enterprise",
-    },
-    {
-      name: "Acme Corp.",
-      logo: AudioWaveform,
-      plan: "Startup",
-    },
-    {
-      name: "Evil Corp.",
-      logo: Command,
-      plan: "Free",
-    },
-  ],
   navMain: [
     {
-      title: "Playground",
-      url: "#",
-      icon: SquareTerminal,
+      title: "Overview",
+      url: "/",
+      icon: ChartColumnBig,
       isActive: true,
+    },
+    {
+      title: "Sales",
+      url: "/sales",
+      icon: Gem,
       items: [
         {
-          title: "History",
-          url: "#",
+          title: "Global Revenue",
+          url: "/sales/global-revenue",
         },
         {
-          title: "Starred",
-          url: "#",
+          title: "Sales by Area",
+          url: "/sales/by-area",
         },
         {
-          title: "Settings",
-          url: "#",
+          title: "Sales by Category",
+          url: "/sales/by-category",
+        },
+        {
+          title: "Sales by Product",
+          url: "/sales/by-product",
+        },
+        {
+          title: "Sales by Trend",
+          url: "/sales/by-trend",
+        },
+        {
+          title: "Discounts & Refunds",
+          url: "/sales/discounts-refunds",
+        },
+        {
+          title: "Tips",
+          url: "/sales/tips",
+        },
+        {
+          title: "Payment Methods",
+          url: "/sales/payment-methods",
         },
       ],
     },
     {
-      title: "Models",
-      url: "#",
-      icon: Bot,
+      title: "CRM",
+      url: "/crm",
+      icon: CircleDot,
       items: [
         {
-          title: "Genesis",
-          url: "#",
+          title: "Clients",
+          url: "/crm/clients",
         },
         {
-          title: "Explorer",
-          url: "#",
+          title: "Loyalty",
+          url: "/crm/loyalty",
         },
         {
-          title: "Quantum",
-          url: "#",
+          title: "Guest Satisfaction",
+          url: "/crm/guest-satisfaction",
+        },
+        {
+          title: "Customer Service",
+          url: "/crm/customer-service",
         },
       ],
     },
     {
-      title: "Documentation",
-      url: "#",
-      icon: BookOpen,
+      title: "Reservations",
+      url: "/reservations",
+      icon: CalendarDays,
+    },
+    {
+      title: "Marketing",
+      url: "/marketing",
+      icon: Megaphone,
       items: [
         {
-          title: "Introduction",
-          url: "#",
+          title: "Website Analytics",
+          url: "/marketing/website-analytics",
         },
         {
-          title: "Get Started",
-          url: "#",
+          title: "Booking Widget",
+          url: "/marketing/booking-widget",
         },
         {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
-          url: "#",
+          title: "Paid Media",
+          url: "/marketing/paid-media",
         },
       ],
     },
     {
-      title: "Settings",
-      url: "#",
-      icon: Settings2,
+      title: "Staff",
+      url: "/staff",
+      icon: Users2,
       items: [
         {
-          title: "General",
-          url: "#",
+          title: "Labour Cost",
+          url: "/staff/labour-cost",
         },
         {
-          title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
-          url: "#",
+          title: "Absences",
+          url: "/staff/absences",
         },
       ],
     },
-  ],
-  projects: [
     {
-      name: "Design Engineering",
-      url: "#",
-      icon: Frame,
+      title: "F & B",
+      url: "/f-and-b",
+      icon: UtensilsCrossed,
+      items: [
+        {
+          title: "Performance",
+          url: "/f-and-b/performance",
+        },
+        {
+          title: "Stock & Purchasing",
+          url: "/f-and-b/stock-purchasing",
+        },
+      ],
     },
     {
-      name: "Sales & Marketing",
-      url: "#",
-      icon: PieChart,
-    },
-    {
-      name: "Travel",
-      url: "#",
-      icon: Map,
+      title: "Reports",
+      url: "/reports",
+      icon: FileText,
     },
   ],
 }
@@ -157,12 +159,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
+        <Link
+          href="/"
+          className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-white/10"
+        >
+          <Image
+            src={mainLogo}
+            alt="Main logo"
+            width={100}
+            height={20}
+            className="h-20 w-full shrink-0 rounded-sm object-contain"
+            priority
+          />
+        </Link>
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
       </SidebarContent>
-      <SidebarFooter>
-      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   )
