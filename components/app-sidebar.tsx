@@ -161,14 +161,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <Link
           href="/"
-          className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-white/10"
+          className="inline-flex w-fit items-center rounded-md p-1 hover:bg-white/10"
         >
           <Image
             src={mainLogo}
             alt="Main logo"
-            width={100}
-            height={20}
-            className="h-20 w-full shrink-0 rounded-sm object-contain"
+            width={300}
+            height={80}
+            className="h-20 w-auto shrink-0 rounded-sm object-contain"
             priority
           />
         </Link>
