@@ -3,18 +3,19 @@ import {
     ResponsiveContainer,
     Tooltip,
     YAxis,
+    CartesianGrid,
     Area,
     AreaChart,
 } from "recharts";
 
 const weekData = [
-    { day: "Mo", discounts: 355, refunds: 58, impact: 420 },
-    { day: "Tu", discounts: 340, refunds: 62, impact: 390 },
-    { day: "We", discounts: 360, refunds: 55, impact: 410 },
-    { day: "Th", discounts: 345, refunds: 70, impact: 405 },
-    { day: "Fr", discounts: 358, refunds: 65, impact: 415 },
-    { day: "Sa", discounts: 370, refunds: 75, impact: 445 },
-    { day: "Su", discounts: 375, refunds: 78, impact: 500 },
+    { day: "Mo", discounts: 380, refunds: 60, impact: 420 },
+    { day: "Tu", discounts: 340, refunds: 50, impact: 380 },
+    { day: "We", discounts: 340, refunds: 60, impact: 390 },
+    { day: "Th", discounts: 360, refunds: 70, impact: 410 },
+    { day: "Fr", discounts: 340, refunds: 60, impact: 390 },
+    { day: "Sa", discounts: 340, refunds: 70, impact: 400 },
+    { day: "Su", discounts: 380, refunds: 80, impact: 500 },
 ];
 
 const tableData = [
@@ -37,20 +38,34 @@ const typeBadge: Record<string, { label: string; color: string }> = {
 function MiniChart({
     dataKey,
     color,
+    yTicks,
 }: {
     dataKey: string;
     color: string;
+    yTicks: number[];
 }) {
+    const maxTick = Math.max(...yTicks);
+    const minTick = Math.min(...yTicks);
+
     return (
         <ResponsiveContainer width="100%" height={60}>
-            <AreaChart data={weekData} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
+            <AreaChart data={weekData} margin={{ top: 4, right: 14, left: 0, bottom: 0 }}>
                 <defs>
                     <linearGradient id={`grad-${dataKey}`} x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor={color} stopOpacity={0.18} />
                         <stop offset="95%" stopColor={color} stopOpacity={0.02} />
                     </linearGradient>
                 </defs>
-                <YAxis domain={["auto", "auto"]} hide />
+                <CartesianGrid vertical={false} horizontal stroke="#eceef2" strokeWidth={1} />
+                <YAxis
+                    domain={[minTick, maxTick]}
+                    ticks={yTicks}
+                    orientation="right"
+                    axisLine={false}
+                    tickLine={false}
+                    width={26}
+                    tick={{ fontSize: 11, fill: "#b8bec9", fontFamily: "'DM Sans', sans-serif" }}
+                />
                 <Tooltip
                     contentStyle={{
                         background: "#fff",
@@ -70,9 +85,9 @@ function MiniChart({
                     type="monotone"
                     dataKey={dataKey}
                     stroke={color}
-                    strokeWidth={1.5}
+                    strokeWidth={1.7}
                     fill={`url(#grad-${dataKey})`}
-                    dot={{ r: 2.5, fill: color, stroke: "#fff", strokeWidth: 1.5 }}
+                    dot={{ r: 2.8, fill: color, stroke: "#fff", strokeWidth: 1.5 }}
                     activeDot={{ r: 4 }}
                 />
             </AreaChart>
@@ -86,12 +101,14 @@ function StatCard({
     sub,
     subColor,
     dataKey,
+    yTicks,
 }: {
     label: string;
     value: string;
     sub: string;
     subColor: string;
     dataKey: string;
+    yTicks: number[];
 }) {
     return (
         <div
@@ -147,7 +164,7 @@ function StatCard({
             >
                 {sub}
             </span>
-            <MiniChart dataKey={dataKey} color="#e5393a" />
+            <MiniChart dataKey={dataKey} color="#ef4444" yTicks={yTicks} />
             <div
                 style={{
                     display: "flex",
@@ -193,6 +210,7 @@ export default function DiscountsRefundsDashboard() {
                     sub="Applied this period"
                     subColor="#e5393a"
                     dataKey="discounts"
+                    yTicks={[380, 360, 340]}
                 />
                 <StatCard
                     label="Total Refunds"
@@ -200,6 +218,7 @@ export default function DiscountsRefundsDashboard() {
                     sub="Refunded this period"
                     subColor="#e5393a"
                     dataKey="refunds"
+                    yTicks={[80, 60, 40]}
                 />
                 <StatCard
                     label="Total Impact"
@@ -207,6 +226,7 @@ export default function DiscountsRefundsDashboard() {
                     sub="Net revenue reduction"
                     subColor="#e5393a"
                     dataKey="impact"
+                    yTicks={[500, 400, 300]}
                 />
             </div>
 

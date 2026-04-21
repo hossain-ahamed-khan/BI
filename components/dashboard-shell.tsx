@@ -1,3 +1,5 @@
+"use client"
+
 import type { ReactNode } from "react"
 import {
   Bell,
@@ -6,6 +8,7 @@ import {
   ArrowRightLeft,
   Users,
 } from "lucide-react"
+import { usePathname } from "next/navigation"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import {
@@ -29,6 +32,7 @@ type DashboardShellProps = {
 }
 
 export function DashboardShell({ section, children }: DashboardShellProps) {
+  const pathname = usePathname()
   const timeRanges = ["Day", "Week", "Month", "Year", "Custom"]
   const activeRange = "Week"
   const profileMenuItems = [
@@ -37,6 +41,18 @@ export function DashboardShell({ section, children }: DashboardShellProps) {
     { label: "Integrations", icon: ArrowRightLeft },
     { label: "Notifications", icon: Bell },
   ]
+
+  const routeSegment = pathname
+    .split("/")
+    .filter(Boolean)
+    .pop()
+
+  const routeSection = routeSegment
+    ? routeSegment
+      .split("-")
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ")
+    : section
 
   return (
     <SidebarProvider>
@@ -56,7 +72,7 @@ export function DashboardShell({ section, children }: DashboardShellProps) {
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>{section}</BreadcrumbPage>
+                  <BreadcrumbPage>{routeSection}</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>

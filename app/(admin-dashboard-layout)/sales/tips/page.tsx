@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
 import {
+    Area,
     LineChart,
     Line,
     ResponsiveContainer,
@@ -69,29 +69,55 @@ interface MiniChartProps {
 }
 
 function MiniChart({ data, color, domain, showArea = true }: MiniChartProps) {
+    const gradientId = `mini-area-${color.replace("#", "")}`;
+
     return (
-        <div style={{ width: "100%", height: 70, marginTop: 4 }}>
+        <div style={{ width: "100%", height: 76, marginTop: 6 }}>
             <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={data} margin={{ top: 6, right: 4, left: 4, bottom: 0 }}>
-                    {domain && <YAxis domain={domain} hide />}
+                <LineChart data={data} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
+                    <defs>
+                        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={color} stopOpacity={0.2} />
+                            <stop offset="100%" stopColor={color} stopOpacity={0.02} />
+                        </linearGradient>
+                    </defs>
+                    {domain && (
+                        <YAxis
+                            domain={domain}
+                            orientation="right"
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fontSize: 10, fill: "#9ca3af" }}
+                            width={24}
+                        />
+                    )}
                     <Tooltip
+                        cursor={false}
                         contentStyle={{
                             background: "#fff",
                             border: "1px solid #e5e7eb",
                             borderRadius: 6,
                             fontSize: 11,
-                            padding: "2px 8px",
+                            padding: "3px 8px",
                         }}
                         itemStyle={{ color: "#374151" }}
                         labelStyle={{ color: "#9ca3af", fontSize: 10 }}
                     />
+                    {showArea && (
+                        <Area
+                            type="monotone"
+                            dataKey="value"
+                            stroke="none"
+                            fill={`url(#${gradientId})`}
+                        />
+                    )}
                     <Line
                         type="monotone"
                         dataKey="value"
                         stroke={color}
-                        strokeWidth={1.5}
-                        dot={{ r: 2.5, fill: color, strokeWidth: 0 }}
-                        activeDot={{ r: 4, fill: color }}
+                        strokeWidth={1.7}
+                        dot={{ r: 2.1, fill: color, stroke: "#fff", strokeWidth: 1 }}
+                        activeDot={{ r: 3.2, fill: color, stroke: "#fff", strokeWidth: 1.5 }}
                     />
                 </LineChart>
             </ResponsiveContainer>
@@ -102,7 +128,7 @@ function MiniChart({ data, color, domain, showArea = true }: MiniChartProps) {
                     justifyContent: "space-between",
                     paddingLeft: 4,
                     paddingRight: 4,
-                    marginTop: -2,
+                    marginTop: -1,
                 }}
             >
                 {weekDays.map((d) => (
@@ -140,10 +166,12 @@ function KPICard({
         <div style={styles.card}>
             <p style={styles.cardLabel}>{label}</p>
             <p style={styles.cardValue}>{value}</p>
-            <span style={{ ...styles.badge, color: badgeColor }}>
-                <span style={{ marginRight: 2 }}>▲</span>
-                {badge}
-            </span>
+            {badge ? (
+                <span style={{ ...styles.badge, color: badgeColor }}>
+                    <span style={{ marginRight: 2 }}>▲</span>
+                    {badge}
+                </span>
+            ) : null}
             <p style={styles.cardSub}>{sub}</p>
             <MiniChart data={data} color={lineColor} domain={domain} />
         </div>
@@ -293,7 +321,7 @@ export default function TipsDashboard() {
 // --- Styles ---
 const styles: Record<string, React.CSSProperties> = {
     container: {
-        background: "#f3f4f6",
+        background: "#eceff3",
         minHeight: "100vh",
         padding: "20px",
         fontFamily: "'DM Sans', 'Helvetica Neue', Arial, sans-serif",
@@ -311,10 +339,11 @@ const styles: Record<string, React.CSSProperties> = {
         gap: 16,
     },
     card: {
-        background: "#ffffff",
+        background: "#f8fafc",
+        border: "1px solid #e5e7eb",
         borderRadius: 14,
         padding: "18px 20px 14px",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+        boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
     },
     cardLabel: {
         fontSize: 10,

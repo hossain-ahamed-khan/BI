@@ -175,7 +175,7 @@ export default function CRMDashboard() {
                             <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", color: "#94a3b8", textTransform: "uppercase" }}>{card.label}</span>
                             {card.right && <span style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8", letterSpacing: "0.06em" }}>{card.right}</span>}
                         </div>
-                        <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-0.02em", color: "#0f172a", lineHeight: 1.1 }}>{card.value}</div>
+                        <div style={{ fontSize: 28, fontWeight: 300, letterSpacing: "-0.02em", color: "#0f172a", lineHeight: 1.1 }}>{card.value}</div>
                         {card.sub && <div style={{ fontSize: 11, color: "#94a3b8" }}>{card.sub}</div>}
                         {card.badge && <div style={{ fontSize: 11, color: card.badgeColor, fontWeight: 600 }}>{card.badge}</div>}
                         {card.sub2 && <div style={{ fontSize: 10, color: "#94a3b8" }}>{card.sub2}</div>}

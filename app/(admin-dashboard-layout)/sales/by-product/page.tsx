@@ -43,13 +43,12 @@ interface SparklineProps {
     points: [number, number][];   // [x, y] in viewBox coords (0-200, 0-48)
     color: string;
     gradientId: string;
+    fillOpacity?: number;
     labels?: { right: string[]; bottom: string[] };
 }
 
-function Sparkline({ points, color, gradientId, labels }: SparklineProps) {
-    const d = points.map((p, i) => `${i === 0 ? "M" : "C"}${p[0]},${p[1]}`).join(" ");
-
-    // Build smooth path
+function Sparkline({ points, color, gradientId, fillOpacity = 0, labels }: SparklineProps) {
+    // Build smooth path with mirrored control points for a soft trend line.
     const pathD = points.reduce((acc, p, i) => {
         if (i === 0) return `M${p[0]},${p[1]}`;
         const prev = points[i - 1];
@@ -66,28 +65,28 @@ function Sparkline({ points, color, gradientId, labels }: SparklineProps) {
 
     return (
         <svg
-            viewBox="0 0 200 48"
+            viewBox="0 0 200 56"
             preserveAspectRatio="none"
-            style={{ width: "100%", height: 48, overflow: "visible", display: "block" }}
+            style={{ width: "100%", height: 56, overflow: "visible", display: "block" }}
         >
             <defs>
                 <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={color} stopOpacity={0.2} />
+                    <stop offset="0%" stopColor={color} stopOpacity={fillOpacity} />
                     <stop offset="100%" stopColor={color} stopOpacity={0} />
                 </linearGradient>
             </defs>
             <path d={areaD} fill={`url(#${gradientId})`} />
-            <path d={pathD} fill="none" stroke={color} strokeWidth={1.8} />
+            <path d={pathD} fill="none" stroke={color} strokeWidth={1.7} strokeLinecap="round" />
             {points.map((p, i) => (
-                <circle key={i} cx={p[0]} cy={p[1]} r={3} fill={color} />
+                <circle key={i} cx={p[0]} cy={p[1]} r={2.1} fill={color} stroke="#ffffff" strokeWidth={0.9} />
             ))}
             {labels?.right.map((label, i) => (
                 <text
                     key={i}
                     x={196}
-                    y={8 + i * 14}
-                    fontSize={9}
-                    fill="#9ca3af"
+                    y={11 + i * 14}
+                    fontSize={8.5}
+                    fill="#b7bcc8"
                     textAnchor="end"
                 >
                     {label}
@@ -97,9 +96,9 @@ function Sparkline({ points, color, gradientId, labels }: SparklineProps) {
                 <text
                     key={i}
                     x={[0, 35, 72, 108, 142, 170, 192][i]}
-                    y={48}
-                    fontSize={9}
-                    fill="#c4c4d0"
+                    y={55}
+                    fontSize={8.5}
+                    fill="#c3c7d2"
                 >
                     {label}
                 </text>
@@ -118,35 +117,37 @@ interface KpiCardProps {
     sparkPoints: [number, number][];
     color: string;
     gradientId: string;
+    fillOpacity?: number;
     rightLabels: string[];
 }
 
 const BADGE: Record<string, React.CSSProperties> = {
-    green: { background: "#e6f9f0", color: "#16a34a" },
-    gray: { background: "#f3f4f6", color: "#6b7280" },
+    green: { background: "#e5faf1", color: "#14a35f" },
+    gray: { background: "#eef1f6", color: "#7b8393" },
 };
 
-function KpiCard({ label, value, badge, sparkPoints, color, gradientId, rightLabels }: KpiCardProps) {
+function KpiCard({ label, value, badge, sparkPoints, color, gradientId, fillOpacity, rightLabels }: KpiCardProps) {
     return (
         <div style={{
-            background: "#fff",
+            background: "#f9f9fc",
+            border: "1px solid #e8eaf1",
             borderRadius: 16,
-            padding: "20px 22px 14px",
-            boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+            padding: "16px 18px 12px",
+            boxShadow: "0 1px 2px rgba(15, 23, 42, 0.03)",
             flex: 1,
             minWidth: 0,
         }}>
-            <div style={{ fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "#9b9bae", fontWeight: 600, marginBottom: 6 }}>
+            <div style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: "#a7acb8", fontWeight: 600, marginBottom: 10 }}>
                 {label}
             </div>
-            <div style={{ fontSize: label === "Top Category" ? 22 : 28, fontWeight: 700, color: "#18181b", letterSpacing: "-0.5px", lineHeight: 1.1 }}>
+            <div style={{ fontSize: label === "Top Category" ? 33 : 40, fontWeight: 300, color: "#252833", letterSpacing: "-0.03em", lineHeight: 1 }}>
                 {value}
             </div>
             {badge && (
-                <div style={{ marginTop: 6 }}>
+                <div style={{ marginTop: 8 }}>
                     <span style={{
                         display: "inline-flex", alignItems: "center", gap: 4,
-                        fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 99,
+                        fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 99,
                         ...BADGE[badge.variant],
                     }}>
                         {badge.text}
@@ -158,6 +159,7 @@ function KpiCard({ label, value, badge, sparkPoints, color, gradientId, rightLab
                     points={sparkPoints}
                     color={color}
                     gradientId={gradientId}
+                    fillOpacity={fillOpacity}
                     labels={{ right: rightLabels, bottom: DAYS }}
                 />
             </div>
@@ -230,16 +232,16 @@ export default function SalesDashboard() {
     };
 
     return (
-        <div style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif", background: "#f4f4f6", minHeight: "100vh", padding: 24 }}>
+        <div style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif", background: "#f3f4f7", minHeight: "100vh", padding: 24 }}>
 
             {/* KPI Row */}
-            <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14, marginBottom: 20 }}>
                 <KpiCard
                     label="Total SKUs"
                     value="248"
                     badge={{ text: "Active products", variant: "gray" }}
-                    sparkPoints={[[0, 38], [50, 35], [100, 31], [150, 25], [200, 20]]}
-                    color="#818cf8"
+                    sparkPoints={[[5, 35], [35, 28], [68, 24], [100, 20], [132, 19], [164, 18], [196, 17]]}
+                    color="#8b8cf7"
                     gradientId="g1"
                     rightLabels={["250", "240", "230"]}
                 />
@@ -247,8 +249,8 @@ export default function SalesDashboard() {
                     label="Units Sold"
                     value="18.420"
                     badge={{ text: "▲ +8.1% vs LW", variant: "green" }}
-                    sparkPoints={[[0, 30], [50, 28], [100, 26], [150, 18], [200, 10]]}
-                    color="#818cf8"
+                    sparkPoints={[[5, 30], [35, 27], [68, 24], [100, 22], [132, 21], [164, 19], [196, 18]]}
+                    color="#6968f2"
                     gradientId="g2"
                     rightLabels={["20.000", "15.000", "10.000"]}
                 />
@@ -256,17 +258,18 @@ export default function SalesDashboard() {
                     label="Top Category"
                     value="Cocktails"
                     badge={{ text: "38% of units", variant: "green" }}
-                    sparkPoints={[[0, 36], [60, 22], [120, 14], [200, 16]]}
-                    color="#fb923c"
+                    sparkPoints={[[5, 30], [35, 22], [68, 14], [100, 14], [132, 14], [164, 14], [196, 14]]}
+                    color="#f9733f"
                     gradientId="g3"
+                    fillOpacity={0.16}
                     rightLabels={["38", "37", "36"]}
                 />
                 <KpiCard
                     label="Avg Price / Unit"
                     value="€18.40"
                     badge={{ text: "This week", variant: "gray" }}
-                    sparkPoints={[[0, 32], [50, 30], [100, 26], [150, 20], [200, 16]]}
-                    color="#2dd4bf"
+                    sparkPoints={[[5, 33], [35, 29], [68, 26], [100, 24], [132, 23], [164, 22], [196, 21]]}
+                    color="#12b6a5"
                     gradientId="g4"
                     rightLabels={["19", "18", "17"]}
                 />

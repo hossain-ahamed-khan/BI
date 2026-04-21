@@ -1,6 +1,8 @@
 "use client";
-import { useState } from "react";
+import type { ReactNode } from "react";
 import {
+    Area,
+    CartesianGrid,
     LineChart,
     Line,
     XAxis,
@@ -49,21 +51,30 @@ function MiniChart({
     areaColor: string;
 }) {
     return (
-        <ResponsiveContainer width="100%" height={60}>
-            <LineChart data={weeklyData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+        <ResponsiveContainer width="100%" height={62}>
+            <LineChart data={weeklyData} margin={{ top: 2, right: 2, bottom: 0, left: 0 }}>
                 <defs>
                     <linearGradient id={`grad-${dataKey}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={areaColor} stopOpacity={0.3} />
+                        <stop offset="0%" stopColor={areaColor} stopOpacity={0.24} />
                         <stop offset="100%" stopColor={areaColor} stopOpacity={0.0} />
                     </linearGradient>
                 </defs>
+                <CartesianGrid vertical={false} stroke="#e5e7eb" strokeDasharray="0" />
                 <XAxis
                     dataKey="day"
-                    tick={{ fontSize: 9, fill: "#9ca3af", fontFamily: "inherit" }}
+                    tick={{ fontSize: 10, fill: "#9ca3af", fontFamily: "inherit" }}
                     axisLine={false}
                     tickLine={false}
+                    dy={8}
                 />
-                <YAxis hide domain={["auto", "auto"]} />
+                <YAxis
+                    orientation="right"
+                    domain={["auto", "auto"]}
+                    axisLine={false}
+                    tickLine={false}
+                    width={22}
+                    tick={{ fontSize: 10, fill: "#9ca3af", fontFamily: "inherit" }}
+                />
                 <Tooltip
                     contentStyle={{
                         background: "#fff",
@@ -74,13 +85,21 @@ function MiniChart({
                     }}
                     itemStyle={{ color: "#374151" }}
                 />
+                <Area
+                    type="monotone"
+                    dataKey={dataKey}
+                    fill={`url(#grad-${dataKey})`}
+                    stroke="none"
+                    isAnimationActive={false}
+                />
                 <Line
                     type="monotone"
                     dataKey={dataKey}
                     stroke={color}
-                    strokeWidth={1.5}
-                    dot={{ r: 3, fill: color, strokeWidth: 0 }}
+                    strokeWidth={2}
+                    dot={{ r: 3, fill: color, stroke: "#ffffff", strokeWidth: 1 }}
                     activeDot={{ r: 4 }}
+                    isAnimationActive={false}
                 />
             </LineChart>
         </ResponsiveContainer>
@@ -98,7 +117,7 @@ function StatCard({
 }: {
     label: string;
     value: string;
-    sub: React.ReactNode;
+    sub: ReactNode;
     subColor?: string;
     dataKey: string;
     lineColor: string;
@@ -107,12 +126,13 @@ function StatCard({
     return (
         <div
             style={{
-                background: "#fff",
+                background: "#f3f4f6",
                 borderRadius: 16,
                 padding: "20px 20px 8px 20px",
                 flex: 1,
                 minWidth: 0,
-                boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+                border: "1px solid #e5e7eb",
+                boxShadow: "0 2px 6px rgba(15, 23, 42, 0.06)",
                 display: "flex",
                 flexDirection: "column",
                 gap: 2,
@@ -164,7 +184,7 @@ export default function PaymentDashboard() {
     return (
         <div
             style={{
-                background: "#f3f4f6",
+                background: "#e5e7eb",
                 minHeight: "100vh",
                 padding: 24,
                 fontFamily:
@@ -178,7 +198,16 @@ export default function PaymentDashboard() {
                     label="Total Received"
                     value="€184,320"
                     sub={
-                        <span style={{ color: "#22c55e", fontWeight: 500 }}>
+                        <span
+                            style={{
+                                color: "#10b981",
+                                fontWeight: 600,
+                                background: "#d1fae5",
+                                borderRadius: 999,
+                                padding: "2px 8px",
+                                display: "inline-block",
+                            }}
+                        >
                             ▲ +12.4% vs LY
                         </span>
                     }
@@ -189,7 +218,19 @@ export default function PaymentDashboard() {
                 <StatCard
                     label="Card Payments"
                     value="€140,083"
-                    sub="76% of total"
+                    sub={
+                        <span
+                            style={{
+                                color: "#6b7280",
+                                background: "#e5e7eb",
+                                borderRadius: 999,
+                                padding: "2px 8px",
+                                display: "inline-block",
+                            }}
+                        >
+                            76% of total
+                        </span>
+                    }
                     dataKey="cards"
                     lineColor="#818cf8"
                     areaColor="#818cf8"
@@ -197,7 +238,19 @@ export default function PaymentDashboard() {
                 <StatCard
                     label="Cash"
                     value="€18,432"
-                    sub="10% of total"
+                    sub={
+                        <span
+                            style={{
+                                color: "#6b7280",
+                                background: "#e5e7eb",
+                                borderRadius: 999,
+                                padding: "2px 8px",
+                                display: "inline-block",
+                            }}
+                        >
+                            10% of total
+                        </span>
+                    }
                     dataKey="cash"
                     lineColor="#2dd4bf"
                     areaColor="#2dd4bf"
@@ -205,7 +258,19 @@ export default function PaymentDashboard() {
                 <StatCard
                     label="Other (GC + Other)"
                     value="€25,805"
-                    sub="14% of total"
+                    sub={
+                        <span
+                            style={{
+                                color: "#6b7280",
+                                background: "#e5e7eb",
+                                borderRadius: 999,
+                                padding: "2px 8px",
+                                display: "inline-block",
+                            }}
+                        >
+                            14% of total
+                        </span>
+                    }
                     dataKey="other"
                     lineColor="#fbbf24"
                     areaColor="#fbbf24"

@@ -123,7 +123,7 @@ function KpiCard({ label, value, sub, subColor, sparkData, sparkColor }: {
         }}>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.2, color: gray, textTransform: "uppercase" }}>{label}</div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 2, lineHeight: 1.1 }}>
-                <span style={{ fontSize: 44, fontWeight: 700, color: dark, letterSpacing: -1 }}>{mainValue}</span>
+                <span style={{ fontSize: 32, fontWeight: 300, color: dark, letterSpacing: -1 }}>{mainValue}</span>
                 {tailValue && <span style={{ fontSize: 34, fontWeight: 500, color: dark }}>{tailValue}</span>}
             </div>
             <div style={{
@@ -264,18 +264,6 @@ export default function SupportDashboard() {
             background: lightGray, minHeight: "100vh", padding: 24,
             boxSizing: "border-box",
         }}>
-            {/* Header */}
-            <div style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                    <div style={{ fontSize: 22, fontWeight: 900, color: dark, letterSpacing: -0.5 }}>Support Overview</div>
-                    <div style={{ fontSize: 12, color: gray, marginTop: 2 }}>This week · Mon–Sun</div>
-                </div>
-                <div style={{
-                    background: white, border: `1px solid ${border}`, borderRadius: 10,
-                    padding: "8px 16px", fontSize: 12, fontWeight: 600, color: dark,
-                    boxShadow: "0 1px 4px rgba(0,0,0,0.06)", cursor: "pointer",
-                }}>📅 This Week</div>
-            </div>
 
             {/* KPI Row */}
             <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>

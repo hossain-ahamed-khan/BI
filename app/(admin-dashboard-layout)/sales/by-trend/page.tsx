@@ -36,7 +36,7 @@ const drinkSparkData: SparklinePoint[] = [
 ];
 
 const splitSparkData: SparklinePoint[] = [
-    { value: 40 }, { value: 39.5 }, { value: 38 }, { value: 39 },
+    { value: 40 }, { value: 40 }, { value: 39 }, { value: 39 },
     { value: 39 }, { value: 39 }, { value: 39 },
 ];
 
@@ -129,29 +129,53 @@ function Sparkline({
     data,
     color,
     fillColor,
+    xLabels,
+    yTicks,
+    yTickFormat,
     width = 300,
-    height = 50,
+    height = 74,
 }: {
     data: SparklinePoint[];
     color: string;
     fillColor: string;
+    xLabels?: string[];
+    yTicks?: number[];
+    yTickFormat?: (value: number) => string;
     width?: number;
     height?: number;
 }) {
     const values = data.map((d) => d.value);
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const range = max - min || 1;
-    const pad = 4;
+    const chartLeft = 8;
+    const chartRight = 42;
+    const chartTop = 8;
+    const chartBottom = 42;
+    const innerWidth = width - chartLeft - chartRight;
+    const innerHeight = chartBottom - chartTop;
+
+    const yReferenceTicks = yTicks && yTicks.length > 0 ? yTicks : [Math.max(...values), (Math.max(...values) + Math.min(...values)) / 2, Math.min(...values)];
+    const domainMax = Math.max(...yReferenceTicks, ...values);
+    const domainMin = Math.min(...yReferenceTicks, ...values);
+    const range = domainMax - domainMin || 1;
+
+    const getY = (v: number) => chartTop + ((domainMax - v) / range) * innerHeight;
 
     const points = values.map((v, i) => {
-        const x = pad + (i / (values.length - 1)) * (width - pad * 2);
-        const y = pad + ((max - v) / range) * (height - pad * 2);
+        const x = chartLeft + (i / (values.length - 1)) * innerWidth;
+        const y = getY(v);
         return [x, y];
     });
 
-    const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"}${p[0]},${p[1]}`).join(" ");
-    const fillPath = `${linePath} L${points[points.length - 1][0]},${height} L${points[0][0]},${height} Z`;
+    const linePath = points
+        .map((point, i) => {
+            if (i === 0) return `M${point[0]},${point[1]}`;
+            const prev = points[i - 1];
+            const cpX = (prev[0] + point[0]) / 2;
+            return `C${cpX},${prev[1]} ${cpX},${point[1]} ${point[0]},${point[1]}`;
+        })
+        .join(" ");
+    const fillPath = `${linePath} L${points[points.length - 1][0]},${chartBottom} L${points[0][0]},${chartBottom} Z`;
+    const formatTick = yTickFormat || ((value: number) => value.toLocaleString("en-US"));
+    const labels = xLabels && xLabels.length === values.length ? xLabels : [];
 
     return (
         <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} style={{ overflow: "visible" }}>
@@ -161,11 +185,33 @@ function Sparkline({
                     <stop offset="100%" stopColor={fillColor} stopOpacity="0.02" />
                 </linearGradient>
             </defs>
+
+            {yReferenceTicks.map((tick) => {
+                const y = getY(tick);
+                return (
+                    <g key={tick}>
+                        <line x1={chartLeft} y1={y} x2={width - chartRight + 2} y2={y} stroke="#e5e7eb" strokeWidth="1" />
+                        <text x={width - 2} y={y + 3} textAnchor="end" fontSize="9" fill="#9ca3af" fontWeight="500">
+                            {formatTick(tick)}
+                        </text>
+                    </g>
+                );
+            })}
+
             <path d={fillPath} fill={`url(#grad-${color.replace("#", "")})`} />
             <path d={linePath} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
             {points.map(([x, y], i) => (
-                <circle key={i} cx={x} cy={y} r="2.5" fill={color} />
+                <circle key={i} cx={x} cy={y} r="2" fill={color} stroke="#ffffff" strokeWidth="0.9" />
             ))}
+
+            {labels.map((label, i) => {
+                const x = chartLeft + (i / (labels.length - 1)) * innerWidth;
+                return (
+                    <text key={`${label}-${i}`} x={x} y={height - 8} textAnchor="middle" fontSize="9" fill="#9ca3af" fontWeight="600">
+                        {label}
+                    </text>
+                );
+            })}
         </svg>
     );
 }
@@ -177,18 +223,26 @@ function KpiCard({
     value,
     change,
     changeUp,
+    valueNote,
     data,
     color,
     fillColor,
+    xLabels,
+    yTicks,
+    yTickFormat,
     suffix,
 }: {
     title: string;
     value: string;
     change?: string;
     changeUp?: boolean;
+    valueNote?: string;
     data: SparklinePoint[];
     color: string;
     fillColor: string;
+    xLabels?: string[];
+    yTicks?: number[];
+    yTickFormat?: (value: number) => string;
     suffix?: string;
 }) {
     return (
@@ -198,6 +252,7 @@ function KpiCard({
                 <span style={styles.kpiArrow}>→</span>
             </div>
             <div style={styles.kpiValue}>{value}{suffix && <span style={styles.kpiSuffix}>{suffix}</span>}</div>
+            {valueNote && <div style={styles.kpiPill}>{valueNote}</div>}
             {change && (
                 <div style={{ ...styles.kpiBadge, color: changeUp ? "#10b981" : "#ef4444" }}>
                     <span>{changeUp ? "▲" : "▼"}</span>
@@ -205,7 +260,14 @@ function KpiCard({
                 </div>
             )}
             <div style={{ marginTop: 12 }}>
-                <Sparkline data={data} color={color} fillColor={fillColor} />
+                <Sparkline
+                    data={data}
+                    color={color}
+                    fillColor={fillColor}
+                    xLabels={xLabels}
+                    yTicks={yTicks}
+                    yTickFormat={yTickFormat}
+                />
             </div>
         </div>
     );
@@ -349,6 +411,8 @@ function ParetoTable({ items }: { items: ParetoItem[] }) {
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
 export default function RestaurantDashboard() {
+    const weekLabels = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+
     return (
         <div style={styles.root}>
             {/* KPI Row */}
@@ -361,6 +425,9 @@ export default function RestaurantDashboard() {
                     data={foodSparkData}
                     color="#10b981"
                     fillColor="#10b981"
+                    xLabels={weekLabels}
+                    yTicks={[80000, 60000, 40000]}
+                    yTickFormat={(v) => v.toLocaleString("en-US")}
                 />
                 <KpiCard
                     title="DRINK SALES"
@@ -370,14 +437,20 @@ export default function RestaurantDashboard() {
                     data={drinkSparkData}
                     color="#ef4444"
                     fillColor="#ef4444"
+                    xLabels={weekLabels}
+                    yTicks={[120000, 100000, 80000]}
+                    yTickFormat={(v) => v.toLocaleString("en-US")}
                 />
                 <KpiCard
                     title="FOOD / DRINK SPLIT"
                     value="39/61"
-                    suffix=""
+                    valueNote="Food% / Drink%"
                     data={splitSparkData}
                     color="#8b5cf6"
                     fillColor="#8b5cf6"
+                    xLabels={weekLabels}
+                    yTicks={[40, 39.5, 39]}
+                    yTickFormat={(v) => v.toFixed(1)}
                 />
                 <KpiCard
                     title="AVG DISH PRICE"
@@ -387,6 +460,9 @@ export default function RestaurantDashboard() {
                     data={avgPriceSparkData}
                     color="#6366f1"
                     fillColor="#6366f1"
+                    xLabels={weekLabels}
+                    yTicks={[29, 28, 27]}
+                    yTickFormat={(v) => v.toFixed(0)}
                 />
             </div>
 
@@ -464,6 +540,18 @@ const styles: Record<string, React.CSSProperties> = {
         fontSize: 11,
         fontWeight: 600,
         letterSpacing: "0.02em",
+    },
+    kpiPill: {
+        display: "inline-flex",
+        alignItems: "center",
+        width: "fit-content",
+        fontSize: 11,
+        fontWeight: 600,
+        color: "#6b7280",
+        backgroundColor: "#eef0f4",
+        borderRadius: 999,
+        padding: "3px 8px",
+        marginTop: 2,
     },
     listsRow: {
         display: "grid",

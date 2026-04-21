@@ -197,7 +197,7 @@ const styles: Record<string, React.CSSProperties> = {
     kpiGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, padding: "0 20px 20px" },
     kpiCard: { background: "#fff", border: "1px solid #ebebeb", borderRadius: 12, padding: "16px 18px" },
     kpiLabel: { fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", color: "#aaa", marginBottom: 8, textTransform: "uppercase" },
-    kpiValue: { fontSize: 24, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 },
+    kpiValue: { fontSize: 32, fontWeight: 300, color: "#1a1a1a", marginBottom: 6 },
     kpiYtd: { fontSize: 11, color: "#bbb" },
     tableWrap: { overflowX: "auto", padding: "0 20px 20px" },
     table: { width: "100%", borderCollapse: "collapse", fontSize: 13 },

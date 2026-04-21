@@ -4,160 +4,11 @@ import { useState, type ReactNode } from "react"
 import {
     Area,
     AreaChart,
-    Line,
-    LineChart,
     ResponsiveContainer,
     Tooltip,
     XAxis,
     YAxis,
 } from "recharts"
-
-const monthlyData = [
-    {
-        m: "J",
-        gr: 72,
-        nr: 63,
-        tc: 2100,
-        cr: 4.8,
-        ns: 2.5,
-        lc: 22.8,
-        fb: 24.8,
-        cs: 4.4,
-        rg: 36,
-    },
-    {
-        m: "F",
-        gr: 78,
-        nr: 68,
-        tc: 2200,
-        cr: 4.5,
-        ns: 2.3,
-        lc: 23.0,
-        fb: 24.5,
-        cs: 4.4,
-        rg: 36.5,
-    },
-    {
-        m: "M",
-        gr: 82,
-        nr: 72,
-        tc: 2350,
-        cr: 4.3,
-        ns: 2.2,
-        lc: 22.9,
-        fb: 24.2,
-        cs: 4.5,
-        rg: 37,
-    },
-    {
-        m: "A",
-        gr: 88,
-        nr: 77,
-        tc: 2400,
-        cr: 4.6,
-        ns: 2.4,
-        lc: 23.1,
-        fb: 24.0,
-        cs: 4.5,
-        rg: 37.2,
-    },
-    {
-        m: "M",
-        gr: 91,
-        nr: 80,
-        tc: 2500,
-        cr: 4.4,
-        ns: 2.1,
-        lc: 23.2,
-        fb: 23.8,
-        cs: 4.5,
-        rg: 37.5,
-    },
-    {
-        m: "J",
-        gr: 95,
-        nr: 83,
-        tc: 2600,
-        cr: 4.2,
-        ns: 2.0,
-        lc: 23.0,
-        fb: 24.0,
-        cs: 4.6,
-        rg: 37.8,
-    },
-    {
-        m: "J",
-        gr: 100,
-        nr: 88,
-        tc: 2700,
-        cr: 4.1,
-        ns: 2.0,
-        lc: 23.1,
-        fb: 24.1,
-        cs: 4.6,
-        rg: 38,
-    },
-    {
-        m: "A",
-        gr: 98,
-        nr: 86,
-        tc: 2680,
-        cr: 4.3,
-        ns: 2.2,
-        lc: 23.3,
-        fb: 24.2,
-        cs: 4.6,
-        rg: 38.2,
-    },
-    {
-        m: "S",
-        gr: 96,
-        nr: 85,
-        tc: 2720,
-        cr: 4.2,
-        ns: 2.1,
-        lc: 23.2,
-        fb: 24.1,
-        cs: 4.6,
-        rg: 38.3,
-    },
-    {
-        m: "O",
-        gr: 99,
-        nr: 87,
-        tc: 2800,
-        cr: 4.1,
-        ns: 2.0,
-        lc: 23.1,
-        fb: 24.0,
-        cs: 4.6,
-        rg: 38.4,
-    },
-    {
-        m: "N",
-        gr: 102,
-        nr: 90,
-        tc: 2830,
-        cr: 4.2,
-        ns: 2.1,
-        lc: 23.2,
-        fb: 24.1,
-        cs: 4.6,
-        rg: 38.4,
-    },
-    {
-        m: "D",
-        gr: 107,
-        nr: 94,
-        tc: 2847,
-        cr: 4.2,
-        ns: 2.1,
-        lc: 23.2,
-        fb: 24.1,
-        cs: 4.6,
-        rg: 38.4,
-    },
-]
 
 const weeklyData = [
     { d: "Mon", total: 20000, day: 12000, night: 8000 },
@@ -228,6 +79,23 @@ const dataSources = [
     { name: "Skello", icon: "▤", status: "Live", color: "#10b981" },
 ]
 
+const weekdayLabels = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"] as const
+
+const topKpiSeries = {
+    gr: [62, 68, 82, 86, 80, 95, 98],
+    nr: [50, 55, 66, 69, 65, 74, 76],
+    tc: [40, 46, 60, 62, 58, 69, 71],
+    cr: [11, 9.8, 9.2, 10.4, 8.9, 9.9, 4.2],
+    ns: [5.2, 4.1, 8.2, 6.2, 4.3, 5.1, 2.1],
+} as const
+
+const secondaryKpiSeries = {
+    lc: [22.0, 22.0, 23.0, 22.9, 24.0, 23.0, 23.1],
+    fb: [25.0, 24.4, 24.2, 24.1, 24.3, 24.2, 24.1],
+    cs: [4.3, 4.4, 4.4, 4.5, 4.5, 4.6, 4.6],
+    rg: [35.2, 35.8, 36.3, 37.0, 37.2, 37.8, 38.4],
+} as const
+
 const Badge = ({
     positive,
     children,
@@ -243,54 +111,67 @@ const Badge = ({
             display: "flex",
             alignItems: "center",
             gap: 2,
+            width: "fit-content",
+            padding: "2px 8px",
+            borderRadius: 999,
+            background: positive ? "rgba(16, 185, 129, 0.12)" : "rgba(239, 68, 68, 0.1)",
         }}
     >
         {positive ? "▲" : "▼"} {children}
     </span>
 )
 
-const MiniChart = ({
-    data,
-    dataKey,
+const TopKpiMiniChart = ({
+    values,
     color,
-    type = "line",
+    ticks,
 }: {
-    data: Array<Record<string, number | string>>
-    dataKey: string
+    values: readonly number[]
     color: string
-    type?: "line" | "area"
-}) => (
-    <ResponsiveContainer width="100%" height={60}>
-        {type === "area" ? (
-            <AreaChart data={data} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
+    ticks: number[]
+}) => {
+    const data = values.map((value, index) => ({
+        d: weekdayLabels[index] ?? "",
+        value,
+    }))
+
+    return (
+        <ResponsiveContainer width="100%" height={78}>
+            <AreaChart data={data} margin={{ top: 6, right: 4, left: 0, bottom: 0 }}>
                 <defs>
-                    <linearGradient id={`grad-${dataKey}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={color} stopOpacity={0.15} />
-                        <stop offset="95%" stopColor={color} stopOpacity={0} />
+                    <linearGradient id={`top-kpi-${color.replace("#", "")}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={color} stopOpacity={0.2} />
+                        <stop offset="100%" stopColor={color} stopOpacity={0.02} />
                     </linearGradient>
                 </defs>
+                <XAxis
+                    dataKey="d"
+                    tick={{ fontSize: 9, fill: "#a0a9b8" }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval={0}
+                />
+                <YAxis
+                    orientation="right"
+                    tick={{ fontSize: 9, fill: "#c1c7d0" }}
+                    axisLine={false}
+                    tickLine={false}
+                    ticks={ticks}
+                    width={24}
+                />
                 <Area
                     type="monotone"
-                    dataKey={dataKey}
+                    dataKey="value"
                     stroke={color}
-                    strokeWidth={1.5}
-                    fill={`url(#grad-${dataKey})`}
-                    dot={false}
+                    strokeWidth={1.6}
+                    fill={`url(#top-kpi-${color.replace("#", "")})`}
+                    dot={{ r: 2, fill: color, strokeWidth: 0 }}
+                    activeDot={{ r: 3 }}
                 />
             </AreaChart>
-        ) : (
-            <LineChart data={data} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
-                <Line
-                    type="monotone"
-                    dataKey={dataKey}
-                    stroke={color}
-                    strokeWidth={1.5}
-                    dot={{ r: 2, fill: color }}
-                />
-            </LineChart>
-        )}
-    </ResponsiveContainer>
-)
+        </ResponsiveContainer>
+    )
+}
 
 const KPICard = ({
     label,
@@ -298,61 +179,136 @@ const KPICard = ({
     badge,
     badgePositive,
     sub,
-    dataKey,
+    chartValues,
+    chartTicks,
     color,
-    isArea = true,
 }: {
     label: string
     value: string
     badge: string
     badgePositive: boolean
     sub?: string
-    dataKey: string
+    chartValues: readonly number[]
+    chartTicks: number[]
     color: string
-    isArea?: boolean
 }) => (
     <div
         style={{
-            background: "#fff",
-            borderRadius: 12,
-            padding: "16px 18px 10px",
-            border: "1px solid #f1f5f9",
+            background: "#f4f5f7",
+            borderRadius: 14,
+            padding: "14px 16px 10px",
+            border: "1px solid #dde2e8",
+            boxShadow: "0 1px 2px rgba(15, 23, 42, 0.06)",
             flex: 1,
             minWidth: 0,
         }}
     >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <p
+                style={{
+                    fontSize: 9,
+                    fontWeight: 700,
+                    letterSpacing: 1.6,
+                    color: "#98a2b3",
+                    textTransform: "uppercase",
+                    margin: "0 0 6px",
+                }}
+            >
+                {label}
+            </p>
+            <span style={{ color: "#98a2b3", fontSize: 13 }}>→</span>
+        </div>
         <p
             style={{
-                fontSize: 9,
-                fontWeight: 700,
-                letterSpacing: 1,
-                color: "#94a3b8",
-                textTransform: "uppercase",
-                margin: "0 0 6px",
-            }}
-        >
-            {label}
-        </p>
-        <p
-            style={{
-                fontSize: 26,
-                fontWeight: 700,
-                color: "#0f172a",
-                margin: "0 0 2px",
-                letterSpacing: -1,
+                fontSize: 32,
+                fontWeight: 300,
+                color: "#343449",
+                margin: "0 0 4px",
+                letterSpacing: -1.2,
+                lineHeight: 1,
             }}
         >
             {value}
         </p>
         <Badge positive={badgePositive}>{badge}</Badge>
-        {sub && <p style={{ fontSize: 10, color: "#94a3b8", margin: "2px 0 0" }}>{sub}</p>}
+        {sub && <p style={{ fontSize: 11, color: "#9ba3b3", margin: "4px 0 0" }}>{sub}</p>}
         <div style={{ marginTop: 6 }}>
-            <MiniChart
-                data={monthlyData}
-                dataKey={dataKey}
-                color={color}
-                type={isArea ? "area" : "line"}
-            />
+            <TopKpiMiniChart values={chartValues} color={color} ticks={chartTicks} />
+        </div>
+    </div>
+)
+
+const SecondaryMetricCard = ({
+    label,
+    value,
+    valueSuffix,
+    badge,
+    badgePositive,
+    sub,
+    detail,
+    chartValues,
+    chartTicks,
+    color,
+}: {
+    label: string
+    value: string
+    valueSuffix?: string
+    badge: string
+    badgePositive: boolean
+    sub?: string
+    detail?: string
+    chartValues: readonly number[]
+    chartTicks: number[]
+    color: string
+}) => (
+    <div
+        style={{
+            background: "#f4f5f7",
+            borderRadius: 14,
+            padding: "14px 16px 10px",
+            border: "1px solid #dde2e8",
+            boxShadow: "0 1px 2px rgba(15, 23, 42, 0.06)",
+            flex: 1,
+            minWidth: 0,
+        }}
+    >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <p
+                style={{
+                    fontSize: 9,
+                    fontWeight: 700,
+                    letterSpacing: 1.6,
+                    color: "#98a2b3",
+                    textTransform: "uppercase",
+                    margin: "0 0 6px",
+                }}
+            >
+                {label}
+            </p>
+            <span style={{ color: "#98a2b3", fontSize: 13 }}>→</span>
+        </div>
+        <p
+            style={{
+                fontSize: 32,
+                fontWeight: 300,
+                color: "#343449",
+                margin: "0 0 4px",
+                letterSpacing: -1.2,
+                lineHeight: 1,
+            }}
+        >
+            {value}
+            {valueSuffix && <span style={{ fontSize: 34, color: "#99a3b3" }}>{valueSuffix}</span>}
+        </p>
+        <Badge positive={badgePositive}>{badge}</Badge>
+        {sub && (
+            <p style={{ fontSize: 11, color: "#9ba3b3", margin: "4px 0 0" }}>
+                {sub}
+                {detail && <span style={{ color: "#8893a6" }}> · {detail}</span>}
+            </p>
+        )}
+        <div style={{ marginTop: 6 }}>
+            <TopKpiMiniChart values={chartValues} color={color} ticks={chartTicks} />
         </div>
     </div>
 )
@@ -377,7 +333,8 @@ export default function DashboardHomePage() {
                     badge="+12.4% vs LY"
                     badgePositive
                     sub="YTD: EUR 1,024,800"
-                    dataKey="gr"
+                    chartValues={topKpiSeries.gr}
+                    chartTicks={[60, 80, 100]}
                     color="#6366f1"
                 />
                 <KPICard
@@ -386,7 +343,8 @@ export default function DashboardHomePage() {
                     badge="+9.7% vs LY"
                     badgePositive
                     sub="YTD: EUR 897,200"
-                    dataKey="nr"
+                    chartValues={topKpiSeries.nr}
+                    chartTicks={[50, 80, 100]}
                     color="#6366f1"
                 />
                 <KPICard
@@ -395,7 +353,8 @@ export default function DashboardHomePage() {
                     badge="+6.2% vs LY"
                     badgePositive
                     sub="YTD: 16,240"
-                    dataKey="tc"
+                    chartValues={topKpiSeries.tc}
+                    chartTicks={[40, 60, 80]}
                     color="#10b981"
                 />
                 <KPICard
@@ -404,9 +363,9 @@ export default function DashboardHomePage() {
                     badge="-0.3pp vs LY"
                     badgePositive={false}
                     sub="YTD avg: 3.8%"
-                    dataKey="cr"
+                    chartValues={topKpiSeries.cr}
+                    chartTicks={[0, 10, 20]}
                     color="#ef4444"
-                    isArea={false}
                 />
                 <KPICard
                     label="No-Show Rate"
@@ -414,173 +373,58 @@ export default function DashboardHomePage() {
                     badge="-0.4pp vs LY"
                     badgePositive={false}
                     sub="YTD avg: 2.6%"
-                    dataKey="ns"
+                    chartValues={topKpiSeries.ns}
+                    chartTicks={[0, 5, 10]}
                     color="#f97316"
-                    isArea={false}
                 />
             </div>
 
             <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
-                <div
-                    style={{
-                        background: "#fff",
-                        borderRadius: 12,
-                        padding: "16px 18px 10px",
-                        border: "1px solid #f1f5f9",
-                        flex: 1,
-                        minWidth: 0,
-                    }}
-                >
-                    <p
-                        style={{
-                            fontSize: 9,
-                            fontWeight: 700,
-                            letterSpacing: 1,
-                            color: "#94a3b8",
-                            textTransform: "uppercase",
-                            margin: "0 0 6px",
-                        }}
-                    >
-                        Labour Cost %
-                    </p>
-                    <p
-                        style={{
-                            fontSize: 26,
-                            fontWeight: 700,
-                            color: "#0f172a",
-                            margin: "0 0 2px",
-                            letterSpacing: -1,
-                        }}
-                    >
-                        23.2%
-                    </p>
-                    <Badge positive={false}>+0.4pp vs LY</Badge>
-                    <p style={{ fontSize: 10, color: "#94a3b8", margin: "2px 0 6px" }}>
-                        Target: &lt;22%
-                    </p>
-                    <MiniChart data={monthlyData} dataKey="lc" color="#eab308" type="area" />
-                </div>
+                <SecondaryMetricCard
+                    label="Labour Cost %"
+                    value="23.2%"
+                    badge="+0.4pp vs LY"
+                    badgePositive={false}
+                    sub="Target: <22%"
+                    chartValues={secondaryKpiSeries.lc}
+                    chartTicks={[22, 23, 24]}
+                    color="#f59e0b"
+                />
 
-                <div
-                    style={{
-                        background: "#fff",
-                        borderRadius: 12,
-                        padding: "16px 18px 10px",
-                        border: "1px solid #f1f5f9",
-                        flex: 1,
-                        minWidth: 0,
-                    }}
-                >
-                    <p
-                        style={{
-                            fontSize: 9,
-                            fontWeight: 700,
-                            letterSpacing: 1,
-                            color: "#94a3b8",
-                            textTransform: "uppercase",
-                            margin: "0 0 6px",
-                        }}
-                    >
-                        F&B Cost Rate
-                    </p>
-                    <p
-                        style={{
-                            fontSize: 26,
-                            fontWeight: 700,
-                            color: "#0f172a",
-                            margin: "0 0 2px",
-                            letterSpacing: -1,
-                        }}
-                    >
-                        24.1%
-                    </p>
-                    <Badge positive>-0.4pp vs LY</Badge>
-                    <p style={{ fontSize: 10, color: "#94a3b8", margin: "2px 0 6px" }}>
-                        Target: &lt;26%
-                    </p>
-                    <MiniChart data={monthlyData} dataKey="fb" color="#10b981" type="area" />
-                </div>
+                <SecondaryMetricCard
+                    label="F&B Cost Rate"
+                    value="24.1%"
+                    badge="-0.6pp vs LY"
+                    badgePositive
+                    sub="Target: <26%"
+                    chartValues={secondaryKpiSeries.fb}
+                    chartTicks={[24, 25, 26]}
+                    color="#10b981"
+                />
 
-                <div
-                    style={{
-                        background: "#fff",
-                        borderRadius: 12,
-                        padding: "16px 18px 10px",
-                        border: "1px solid #f1f5f9",
-                        flex: 1,
-                        minWidth: 0,
-                    }}
-                >
-                    <p
-                        style={{
-                            fontSize: 9,
-                            fontWeight: 700,
-                            letterSpacing: 1,
-                            color: "#94a3b8",
-                            textTransform: "uppercase",
-                            margin: "0 0 6px",
-                        }}
-                    >
-                        Customer Satisfaction
-                    </p>
-                    <p
-                        style={{
-                            fontSize: 26,
-                            fontWeight: 700,
-                            color: "#0f172a",
-                            margin: "0 0 2px",
-                            letterSpacing: -1,
-                        }}
-                    >
-                        4.6
-                        <span style={{ fontSize: 14, color: "#94a3b8" }}>/5</span>
-                    </p>
-                    <Badge positive>+0.2 vs LY</Badge>
-                    <p style={{ fontSize: 10, color: "#94a3b8", margin: "2px 0 6px" }}>
-                        1,248 reviews
-                    </p>
-                    <MiniChart data={monthlyData} dataKey="cs" color="#6366f1" type="area" />
-                </div>
+                <SecondaryMetricCard
+                    label="Customer Satisfaction"
+                    value="4.6"
+                    valueSuffix="/5"
+                    badge="+0.2 vs LY"
+                    badgePositive
+                    sub="1,248 reviews"
+                    detail="★★★★☆"
+                    chartValues={secondaryKpiSeries.cs}
+                    chartTicks={[4.2, 4.4, 4.6]}
+                    color="#6366f1"
+                />
 
-                <div
-                    style={{
-                        background: "#fff",
-                        borderRadius: 12,
-                        padding: "16px 18px 10px",
-                        border: "1px solid #f1f5f9",
-                        flex: 1,
-                        minWidth: 0,
-                    }}
-                >
-                    <p
-                        style={{
-                            fontSize: 9,
-                            fontWeight: 700,
-                            letterSpacing: 1,
-                            color: "#94a3b8",
-                            textTransform: "uppercase",
-                            margin: "0 0 6px",
-                        }}
-                    >
-                        Returning Guests
-                    </p>
-                    <p
-                        style={{
-                            fontSize: 26,
-                            fontWeight: 700,
-                            color: "#0f172a",
-                            margin: "0 0 2px",
-                            letterSpacing: -1,
-                        }}
-                    >
-                        38.4%
-                    </p>
-                    <Badge positive>+2pp vs LY</Badge>
-                    <p style={{ fontSize: 10, color: "#94a3b8", margin: "2px 0 6px" }}>
-                        of total covers
-                    </p>
-                    <MiniChart data={monthlyData} dataKey="rg" color="#6366f1" type="area" />
-                </div>
+                <SecondaryMetricCard
+                    label="Returning Guests"
+                    value="38.4%"
+                    badge="+2.1pp vs LY"
+                    badgePositive
+                    sub="of total covers"
+                    chartValues={secondaryKpiSeries.rg}
+                    chartTicks={[30, 35, 40]}
+                    color="#8b83f6"
+                />
             </div>
 
             <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
