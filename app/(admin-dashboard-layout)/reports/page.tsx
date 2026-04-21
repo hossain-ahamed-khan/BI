@@ -1,10 +1,5 @@
 "use client";
-import { useState } from "react";
-
-const fontLink = document.createElement("link");
-fontLink.rel = "stylesheet";
-fontLink.href = "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap";
-document.head.appendChild(fontLink);
+import { useEffect, useState } from "react";
 
 const emailAddresses = [
     "user1@example.com",
@@ -65,6 +60,19 @@ function PdfButton({ variant = "active" }: { variant?: "active" | "inactive" }) 
 
 export default function ReportsDashboard() {
     const [, setExporting] = useState<string | null>(null);
+
+    useEffect(() => {
+        const existing = document.querySelector('link[data-font="dm-sans"]');
+        if (existing) {
+            return;
+        }
+
+        const fontLink = document.createElement("link");
+        fontLink.rel = "stylesheet";
+        fontLink.href = "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap";
+        fontLink.setAttribute("data-font", "dm-sans");
+        document.head.appendChild(fontLink);
+    }, []);
 
     const handleExport = (report: string) => {
         setExporting(report);
