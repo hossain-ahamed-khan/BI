@@ -1,6 +1,6 @@
 "use client"
 
-import type { ReactNode } from "react"
+import { useState, type ReactNode } from "react"
 import {
   Bell,
   LogOut,
@@ -25,6 +25,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { RangeProvider, useRange, type RangeKey } from "@/components/range-context"
 
 type DashboardShellProps = {
   section: string
@@ -32,9 +33,24 @@ type DashboardShellProps = {
 }
 
 export function DashboardShell({ section, children }: DashboardShellProps) {
+  return (
+    <RangeProvider>
+      <DashboardShellContent section={section}>{children}</DashboardShellContent>
+    </RangeProvider>
+  )
+}
+
+function DashboardShellContent({ section, children }: DashboardShellProps) {
   const pathname = usePathname()
-  const timeRanges = ["Day", "Week", "Month", "Year", "Custom"]
-  const activeRange = "Week"
+  const { activeRange, setActiveRange, customStart, setCustomStart, customEnd, setCustomEnd } = useRange()
+  const [showCustom, setShowCustom] = useState(false)
+  const timeRanges: { label: string; value: RangeKey }[] = [
+    { label: "Day", value: "day" },
+    { label: "Week", value: "week" },
+    { label: "Month", value: "month" },
+    { label: "Year", value: "year" },
+    { label: "Custom", value: "custom" },
+  ]
   const profileMenuItems = [
     { label: "General Settings", icon: Settings },
     { label: "Team & Roles", icon: Users },
@@ -78,20 +94,79 @@ export function DashboardShell({ section, children }: DashboardShellProps) {
             </Breadcrumb>
           </div>
           <div className="ml-auto flex items-center gap-2 px-4">
-            <div className="inline-flex items-center rounded-xl border border-zinc-200 bg-zinc-100 p-1">
-              {timeRanges.map((range) => (
-                <button
-                  key={range}
-                  type="button"
-                  className={
-                    range === activeRange
-                      ? "rounded-lg bg-white px-4 py-1 text-sm font-medium text-zinc-900 shadow-sm"
-                      : "rounded-lg px-4 py-1 text-sm font-medium text-zinc-500 hover:text-zinc-700"
-                  }
-                >
-                  {range}
-                </button>
-              ))}
+            <div className="relative">
+              <div className="inline-flex items-center rounded-xl border border-zinc-200 bg-zinc-100 p-1">
+                {timeRanges.map((range) => (
+                  <button
+                    key={range.value}
+                    type="button"
+                    onClick={() => {
+                      if (range.value === "custom") {
+                        setShowCustom(true)
+                        return
+                      }
+                      setActiveRange(range.value)
+                      setShowCustom(false)
+                    }}
+                    className={
+                      range.value === activeRange
+                        ? "rounded-lg bg-white px-4 py-1 text-sm font-medium text-zinc-900 shadow-sm"
+                        : "rounded-lg px-4 py-1 text-sm font-medium text-zinc-500 hover:text-zinc-700"
+                    }
+                  >
+                    {range.label}
+                  </button>
+                ))}
+              </div>
+              {showCustom && (
+                <div className="absolute right-0 top-12 z-50 w-[360px] rounded-2xl border border-zinc-200 bg-white p-4 shadow-xl">
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="text-sm font-semibold text-zinc-900">Select date range</p>
+                    <span className="text-xs font-medium text-zinc-400">Compare</span>
+                  </div>
+                  <div className="mb-3 flex gap-3">
+                    <label className="flex-1 text-[11px] font-medium text-zinc-500">
+                      Start date
+                      <input
+                        type="date"
+                        value={customStart}
+                        onChange={(event) => setCustomStart(event.target.value)}
+                        className="mt-2 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm"
+                      />
+                    </label>
+                    <label className="flex-1 text-[11px] font-medium text-zinc-500">
+                      End date
+                      <input
+                        type="date"
+                        value={customEnd}
+                        onChange={(event) => setCustomEnd(event.target.value)}
+                        className="mt-2 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm"
+                      />
+                    </label>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowCustom(false)}
+                      className="rounded-lg border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-700"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (customStart && customEnd) {
+                          setActiveRange("custom")
+                        }
+                        setShowCustom(false)
+                      }}
+                      className="rounded-lg bg-indigo-500 px-3 py-2 text-xs font-semibold text-white"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
             <details className="group/profile relative">
               <summary className="list-none cursor-pointer [&::-webkit-details-marker]:hidden">

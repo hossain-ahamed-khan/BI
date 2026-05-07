@@ -9,6 +9,7 @@ import {
     XAxis,
     YAxis,
 } from "recharts"
+import { useRange, type RangeKey } from "@/components/range-context"
 
 const weeklyData = [
     { d: "Mon", total: 20000, day: 12000, night: 8000 },
@@ -20,10 +21,18 @@ const weeklyData = [
     { d: "Sun", total: 30000, day: 18000, night: 12000 },
 ]
 
+const scaleWeeklyData = (data: typeof weeklyData, factor: number) =>
+    data.map((row) => ({
+        d: row.d,
+        total: Math.round(row.total * factor),
+        day: Math.round(row.day * factor),
+        night: Math.round(row.night * factor),
+    }))
+
 const performanceByArea = [
     {
         unit: "El Comedor",
-        revenue: "EUR 64,512",
+        revenue: "€ 64,512",
         occ: "82%",
         vsLY: "+12.5%",
         vsLYPos: true,
@@ -31,7 +40,7 @@ const performanceByArea = [
     },
     {
         unit: "Jazz Club",
-        revenue: "EUR 27,648",
+        revenue: "€ 27,648",
         occ: "74%",
         vsLY: "+5.2%",
         vsLYPos: true,
@@ -39,7 +48,7 @@ const performanceByArea = [
     },
     {
         unit: "La Barra Jap.",
-        revenue: "EUR 18,432",
+        revenue: "€ 18,432",
         occ: "68%",
         vsLY: "+8.4%",
         vsLYPos: true,
@@ -47,7 +56,7 @@ const performanceByArea = [
     },
     {
         unit: "Cocktail Bar",
-        revenue: "EUR 36,864",
+        revenue: "€ 36,864",
         occ: "91%",
         vsLY: "-2.1%",
         vsLYPos: false,
@@ -55,7 +64,7 @@ const performanceByArea = [
     },
     {
         unit: "Private Club",
-        revenue: "EUR 36,864",
+        revenue: "€ 36,864",
         occ: "88%",
         vsLY: "+22.0%",
         vsLYPos: true,
@@ -89,12 +98,83 @@ const topKpiSeries = {
     ns: [5.2, 4.1, 8.2, 6.2, 4.3, 5.1, 2.1],
 } as const
 
+const scaleSeries = (values: readonly number[], factor: number) =>
+    values.map((value) => Number((value * factor).toFixed(1)))
+
 const secondaryKpiSeries = {
     lc: [22.0, 22.0, 23.0, 22.9, 24.0, 23.0, 23.1],
     fb: [25.0, 24.4, 24.2, 24.1, 24.3, 24.2, 24.1],
     cs: [4.3, 4.4, 4.4, 4.5, 4.5, 4.6, 4.6],
     rg: [35.2, 35.8, 36.3, 37.0, 37.2, 37.8, 38.4],
 } as const
+
+const weeklyDataByRange: Record<RangeKey, typeof weeklyData> = {
+    day: scaleWeeklyData(weeklyData, 0.68),
+    week: weeklyData,
+    month: scaleWeeklyData(weeklyData, 1.18),
+    year: scaleWeeklyData(weeklyData, 1.6),
+    custom: scaleWeeklyData(weeklyData, 0.92),
+}
+
+const topKpiSeriesByRange = {
+    day: {
+        gr: scaleSeries(topKpiSeries.gr, 0.86),
+        nr: scaleSeries(topKpiSeries.nr, 0.84),
+        tc: scaleSeries(topKpiSeries.tc, 0.82),
+        cr: scaleSeries(topKpiSeries.cr, 1.05),
+        ns: scaleSeries(topKpiSeries.ns, 0.92),
+    },
+    week: topKpiSeries,
+    month: {
+        gr: scaleSeries(topKpiSeries.gr, 1.1),
+        nr: scaleSeries(topKpiSeries.nr, 1.06),
+        tc: scaleSeries(topKpiSeries.tc, 1.08),
+        cr: scaleSeries(topKpiSeries.cr, 0.96),
+        ns: scaleSeries(topKpiSeries.ns, 1.02),
+    },
+    year: {
+        gr: scaleSeries(topKpiSeries.gr, 1.26),
+        nr: scaleSeries(topKpiSeries.nr, 1.22),
+        tc: scaleSeries(topKpiSeries.tc, 1.2),
+        cr: scaleSeries(topKpiSeries.cr, 0.9),
+        ns: scaleSeries(topKpiSeries.ns, 0.88),
+    },
+    custom: {
+        gr: scaleSeries(topKpiSeries.gr, 0.98),
+        nr: scaleSeries(topKpiSeries.nr, 0.97),
+        tc: scaleSeries(topKpiSeries.tc, 0.96),
+        cr: scaleSeries(topKpiSeries.cr, 1.02),
+        ns: scaleSeries(topKpiSeries.ns, 0.94),
+    },
+}
+
+const secondaryKpiSeriesByRange = {
+    day: {
+        lc: scaleSeries(secondaryKpiSeries.lc, 0.98),
+        fb: scaleSeries(secondaryKpiSeries.fb, 0.99),
+        cs: scaleSeries(secondaryKpiSeries.cs, 1.0),
+        rg: scaleSeries(secondaryKpiSeries.rg, 0.96),
+    },
+    week: secondaryKpiSeries,
+    month: {
+        lc: scaleSeries(secondaryKpiSeries.lc, 1.02),
+        fb: scaleSeries(secondaryKpiSeries.fb, 1.01),
+        cs: scaleSeries(secondaryKpiSeries.cs, 1.02),
+        rg: scaleSeries(secondaryKpiSeries.rg, 1.04),
+    },
+    year: {
+        lc: scaleSeries(secondaryKpiSeries.lc, 1.04),
+        fb: scaleSeries(secondaryKpiSeries.fb, 1.03),
+        cs: scaleSeries(secondaryKpiSeries.cs, 1.03),
+        rg: scaleSeries(secondaryKpiSeries.rg, 1.08),
+    },
+    custom: {
+        lc: scaleSeries(secondaryKpiSeries.lc, 1.01),
+        fb: scaleSeries(secondaryKpiSeries.fb, 1.0),
+        cs: scaleSeries(secondaryKpiSeries.cs, 1.01),
+        rg: scaleSeries(secondaryKpiSeries.rg, 1.02),
+    },
+}
 
 const Badge = ({
     positive,
@@ -110,14 +190,15 @@ const Badge = ({
             fontWeight: 600,
             display: "flex",
             alignItems: "center",
-            gap: 2,
+            gap: 4,
             width: "fit-content",
-            padding: "2px 8px",
+            padding: "3px 10px",
             borderRadius: 999,
-            background: positive ? "rgba(16, 185, 129, 0.12)" : "rgba(239, 68, 68, 0.1)",
+            background: positive ? "rgba(16, 185, 129, 0.14)" : "rgba(239, 68, 68, 0.12)",
         }}
     >
-        {positive ? "▲" : "▼"} {children}
+        {positive ? "▲" : "▼"}
+        {children}
     </span>
 )
 
@@ -136,7 +217,7 @@ const TopKpiMiniChart = ({
     }))
 
     return (
-        <ResponsiveContainer width="100%" height={78}>
+        <ResponsiveContainer width="100%" height={74}>
             <AreaChart data={data} margin={{ top: 6, right: 4, left: 0, bottom: 0 }}>
                 <defs>
                     <linearGradient id={`top-kpi-${color.replace("#", "")}`} x1="0" y1="0" x2="0" y2="1">
@@ -146,14 +227,14 @@ const TopKpiMiniChart = ({
                 </defs>
                 <XAxis
                     dataKey="d"
-                    tick={{ fontSize: 9, fill: "#a0a9b8" }}
+                    tick={{ fontSize: 9, fill: "#a7b0bf" }}
                     axisLine={false}
                     tickLine={false}
                     interval={0}
                 />
                 <YAxis
                     orientation="right"
-                    tick={{ fontSize: 9, fill: "#c1c7d0" }}
+                    tick={{ fontSize: 9, fill: "#c6ccd8" }}
                     axisLine={false}
                     tickLine={false}
                     ticks={ticks}
@@ -194,11 +275,11 @@ const KPICard = ({
 }) => (
     <div
         style={{
-            background: "#f4f5f7",
-            borderRadius: 14,
-            padding: "14px 16px 10px",
-            border: "1px solid #dde2e8",
-            boxShadow: "0 1px 2px rgba(15, 23, 42, 0.06)",
+            background: "#ffffff",
+            borderRadius: 16,
+            padding: "16px 18px 12px",
+            border: "1px solid #eef0f4",
+            boxShadow: "0 6px 20px rgba(15, 23, 42, 0.08)",
             flex: 1,
             minWidth: 0,
         }}
@@ -206,33 +287,33 @@ const KPICard = ({
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <p
                 style={{
-                    fontSize: 9,
-                    fontWeight: 700,
-                    letterSpacing: 1.6,
-                    color: "#98a2b3",
+                    fontSize: 10,
+                    fontWeight: 300,
+                    letterSpacing: 2,
+                    color: "#9aa4b2",
                     textTransform: "uppercase",
-                    margin: "0 0 6px",
+                    margin: "0 0 8px",
                 }}
             >
                 {label}
             </p>
-            <span style={{ color: "#98a2b3", fontSize: 13 }}>→</span>
+            <span style={{ color: "#c3c9d3", fontSize: 16 }}>→</span>
         </div>
         <p
             style={{
-                fontSize: 32,
-                fontWeight: 300,
-                color: "#343449",
-                margin: "0 0 4px",
-                letterSpacing: -1.2,
-                lineHeight: 1,
+                fontSize: 36,
+                // fontWeight: 300,
+                color: "#2c2f3a",
+                margin: "0 0 6px",
+                letterSpacing: -1.4,
+                lineHeight: 1.05,
             }}
         >
             {value}
         </p>
         <Badge positive={badgePositive}>{badge}</Badge>
-        {sub && <p style={{ fontSize: 11, color: "#9ba3b3", margin: "4px 0 0" }}>{sub}</p>}
-        <div style={{ marginTop: 6 }}>
+        {sub && <p style={{ fontSize: 11, color: "#a0a8b7", margin: "6px 0 0" }}>{sub}</p>}
+        <div style={{ marginTop: 8 }}>
             <TopKpiMiniChart values={chartValues} color={color} ticks={chartTicks} />
         </div>
     </div>
@@ -263,11 +344,11 @@ const SecondaryMetricCard = ({
 }) => (
     <div
         style={{
-            background: "#f4f5f7",
-            borderRadius: 14,
-            padding: "14px 16px 10px",
-            border: "1px solid #dde2e8",
-            boxShadow: "0 1px 2px rgba(15, 23, 42, 0.06)",
+            background: "#ffffff",
+            borderRadius: 16,
+            padding: "16px 18px 12px",
+            border: "1px solid #eef0f4",
+            boxShadow: "0 6px 20px rgba(15, 23, 42, 0.08)",
             flex: 1,
             minWidth: 0,
         }}
@@ -275,39 +356,39 @@ const SecondaryMetricCard = ({
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <p
                 style={{
-                    fontSize: 9,
+                    fontSize: 10,
                     fontWeight: 700,
-                    letterSpacing: 1.6,
-                    color: "#98a2b3",
+                    letterSpacing: 2,
+                    color: "#9aa4b2",
                     textTransform: "uppercase",
-                    margin: "0 0 6px",
+                    margin: "0 0 8px",
                 }}
             >
                 {label}
             </p>
-            <span style={{ color: "#98a2b3", fontSize: 13 }}>→</span>
+            <span style={{ color: "#c3c9d3", fontSize: 16 }}>→</span>
         </div>
         <p
             style={{
-                fontSize: 32,
+                fontSize: 36,
                 fontWeight: 300,
-                color: "#343449",
-                margin: "0 0 4px",
-                letterSpacing: -1.2,
-                lineHeight: 1,
+                color: "#2c2f3a",
+                margin: "0 0 6px",
+                letterSpacing: -1.4,
+                lineHeight: 1.05,
             }}
         >
             {value}
-            {valueSuffix && <span style={{ fontSize: 34, color: "#99a3b3" }}>{valueSuffix}</span>}
+            {valueSuffix && <span style={{ fontSize: 30, color: "#a5adb9" }}>{valueSuffix}</span>}
         </p>
         <Badge positive={badgePositive}>{badge}</Badge>
         {sub && (
-            <p style={{ fontSize: 11, color: "#9ba3b3", margin: "4px 0 0" }}>
+            <p style={{ fontSize: 11, color: "#a0a8b7", margin: "6px 0 0" }}>
                 {sub}
-                {detail && <span style={{ color: "#8893a6" }}> · {detail}</span>}
+                {detail && <span style={{ color: "#8f99ab" }}> · {detail}</span>}
             </p>
         )}
-        <div style={{ marginTop: 6 }}>
+        <div style={{ marginTop: 8 }}>
             <TopKpiMiniChart values={chartValues} color={color} ticks={chartTicks} />
         </div>
     </div>
@@ -315,6 +396,11 @@ const SecondaryMetricCard = ({
 
 export default function DashboardHomePage() {
     const [activeWeek] = useState<"total" | "day" | "night">("total")
+    const { activeRange } = useRange()
+
+    const weeklySeries = weeklyDataByRange[activeRange]
+    const topSeries = topKpiSeriesByRange[activeRange]
+    const secondarySeries = secondaryKpiSeriesByRange[activeRange]
 
     return (
         <div
@@ -329,21 +415,21 @@ export default function DashboardHomePage() {
             <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
                 <KPICard
                     label="Gross Revenue"
-                    value="EUR 184.320"
+                    value="€ 184.320"
                     badge="+12.4% vs LY"
                     badgePositive
-                    sub="YTD: EUR 1,024,800"
-                    chartValues={topKpiSeries.gr}
+                    sub="YTD: € 1,024,800"
+                    chartValues={topSeries.gr}
                     chartTicks={[60, 80, 100]}
                     color="#6366f1"
                 />
                 <KPICard
                     label="Net Revenue"
-                    value="EUR 161.480"
+                    value="€ 161.480"
                     badge="+9.7% vs LY"
                     badgePositive
-                    sub="YTD: EUR 897,200"
-                    chartValues={topKpiSeries.nr}
+                    sub="YTD: € 897,200"
+                    chartValues={topSeries.nr}
                     chartTicks={[50, 80, 100]}
                     color="#6366f1"
                 />
@@ -353,7 +439,7 @@ export default function DashboardHomePage() {
                     badge="+6.2% vs LY"
                     badgePositive
                     sub="YTD: 16,240"
-                    chartValues={topKpiSeries.tc}
+                    chartValues={topSeries.tc}
                     chartTicks={[40, 60, 80]}
                     color="#10b981"
                 />
@@ -363,7 +449,7 @@ export default function DashboardHomePage() {
                     badge="-0.3pp vs LY"
                     badgePositive={false}
                     sub="YTD avg: 3.8%"
-                    chartValues={topKpiSeries.cr}
+                    chartValues={topSeries.cr}
                     chartTicks={[0, 10, 20]}
                     color="#ef4444"
                 />
@@ -373,7 +459,7 @@ export default function DashboardHomePage() {
                     badge="-0.4pp vs LY"
                     badgePositive={false}
                     sub="YTD avg: 2.6%"
-                    chartValues={topKpiSeries.ns}
+                    chartValues={topSeries.ns}
                     chartTicks={[0, 5, 10]}
                     color="#f97316"
                 />
@@ -386,7 +472,7 @@ export default function DashboardHomePage() {
                     badge="+0.4pp vs LY"
                     badgePositive={false}
                     sub="Target: <22%"
-                    chartValues={secondaryKpiSeries.lc}
+                    chartValues={secondarySeries.lc}
                     chartTicks={[22, 23, 24]}
                     color="#f59e0b"
                 />
@@ -397,7 +483,7 @@ export default function DashboardHomePage() {
                     badge="-0.6pp vs LY"
                     badgePositive
                     sub="Target: <26%"
-                    chartValues={secondaryKpiSeries.fb}
+                    chartValues={secondarySeries.fb}
                     chartTicks={[24, 25, 26]}
                     color="#10b981"
                 />
@@ -410,7 +496,7 @@ export default function DashboardHomePage() {
                     badgePositive
                     sub="1,248 reviews"
                     detail="★★★★☆"
-                    chartValues={secondaryKpiSeries.cs}
+                    chartValues={secondarySeries.cs}
                     chartTicks={[4.2, 4.4, 4.6]}
                     color="#6366f1"
                 />
@@ -421,7 +507,7 @@ export default function DashboardHomePage() {
                     badge="+2.1pp vs LY"
                     badgePositive
                     sub="of total covers"
-                    chartValues={secondaryKpiSeries.rg}
+                    chartValues={secondarySeries.rg}
                     chartTicks={[30, 35, 40]}
                     color="#8b83f6"
                 />
@@ -488,7 +574,7 @@ export default function DashboardHomePage() {
                         </div>
                     </div>
                     <ResponsiveContainer width="100%" height={200}>
-                        <AreaChart data={weeklyData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
+                        <AreaChart data={weeklySeries} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="gTotal" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2} />
@@ -509,7 +595,7 @@ export default function DashboardHomePage() {
                                 tick={{ fontSize: 10, fill: "#94a3b8" }}
                                 axisLine={false}
                                 tickLine={false}
-                                tickFormatter={(v) => `EUR ${v / 1000}k`}
+                                tickFormatter={(v) => `€ ${v / 1000}k`}
                             />
                             <Tooltip
                                 formatter={(v) => {
@@ -522,7 +608,7 @@ export default function DashboardHomePage() {
                                                     ? Number(v[0])
                                                     : NaN
 
-                                    return Number.isFinite(num) ? `EUR ${(num / 1000).toFixed(1)}k` : "EUR 0.0k"
+                                    return Number.isFinite(num) ? `€ ${(num / 1000).toFixed(1)}k` : "€ 0.0k"
                                 }}
                                 contentStyle={{
                                     fontSize: 11,
@@ -566,11 +652,11 @@ export default function DashboardHomePage() {
                         }}
                     >
                         {[
-                            { label: "TOTAL", val: "EUR 2.196k", badge: "+13% vs LY", color: "#6366f1" },
-                            { label: "DAY", val: "EUR 1.192k", badge: "+11% vs LY", color: "#3b82f6" },
+                            { label: "TOTAL", val: "€ 2.196k", badge: "+13% vs LY", color: "#6366f1" },
+                            { label: "DAY", val: "€ 1.192k", badge: "+11% vs LY", color: "#3b82f6" },
                             {
                                 label: "NIGHT",
-                                val: "EUR 1.004k",
+                                val: "€ 1.004k",
                                 badge: "+10.9% vs LY",
                                 color: "#ef4444",
                             },
@@ -795,7 +881,7 @@ export default function DashboardHomePage() {
                                 letterSpacing: -1,
                             }}
                         >
-                            EUR 184,320
+                            € 184,320
                         </p>
                         <p style={{ fontSize: 10, color: "#94a3b8", margin: 0 }}>
                             Total received this week
@@ -803,8 +889,8 @@ export default function DashboardHomePage() {
                     </div>
                     <div style={{ flex: 1 }}>
                         {[
-                            { label: "Card", pct: 76, val: "EUR 140,083", color: "#6366f1" },
-                            { label: "Gift Card", pct: 2, val: "EUR 3,686", color: "#10b981" },
+                            { label: "Card", pct: 76, val: "€ 140,083", color: "#6366f1" },
+                            { label: "Gift Card", pct: 2, val: "€ 3,686", color: "#10b981" },
                         ].map(({ label, pct, val, color }) => (
                             <div key={label} style={{ marginBottom: 8 }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
@@ -828,8 +914,8 @@ export default function DashboardHomePage() {
                     </div>
                     <div style={{ flex: 1 }}>
                         {[
-                            { label: "Cash", pct: 10, val: "EUR 18,432", color: "#f97316" },
-                            { label: "Other", pct: 12, val: "EUR 22,118", color: "#94a3b8" },
+                            { label: "Cash", pct: 10, val: "€ 18,432", color: "#f97316" },
+                            { label: "Other", pct: 12, val: "€ 22,118", color: "#94a3b8" },
                         ].map(({ label, pct, val, color }) => (
                             <div key={label} style={{ marginBottom: 8 }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
