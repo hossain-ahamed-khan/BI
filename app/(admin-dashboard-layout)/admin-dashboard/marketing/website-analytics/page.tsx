@@ -227,7 +227,7 @@ export default function AnalyticsDashboard() {
     const xLabels = useMemo(() => {
         if (!data) return [];
         const days = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-        return data.summary.site_visits.trend.map((_, i) => {
+        return data.summary.site_visits.trend.map((_: any, i: number) => {
             if (!data.charts.visits_users[i]) return "";
             return days[new Date(data.charts.visits_users[i].date).getDay()];
         });
@@ -297,7 +297,7 @@ export default function AnalyticsDashboard() {
                             </tr>
                         </thead>
                         <tbody>
-                            {breakdowns.by_country.map((r, i) => (
+                            {breakdowns.by_country.map((r: any, i: number) => (
                                 <tr key={i}>
                                     <td style={s.td}>{r.label}</td>
                                     <td style={{ ...s.td, textAlign: "right" }}>{r.visits.toLocaleString()}</td>
@@ -324,7 +324,7 @@ export default function AnalyticsDashboard() {
                             </tr>
                         </thead>
                         <tbody>
-                            {breakdowns.by_city.map((r, i) => (
+                            {breakdowns.by_city.map((r: any, i: number) => (
                                 <tr key={i}>
                                     <td style={s.td}>🏙 {r.label}</td>
                                     <td style={{ ...s.td, textAlign: "right" }}>{r.visits.toLocaleString()}</td>
@@ -342,7 +342,7 @@ export default function AnalyticsDashboard() {
                         <span style={s.arrow}>→</span>
                     </div>
                     <div style={{ marginTop: 12 }}>
-                        {breakdowns.by_language.map((r, i) => (
+                        {breakdowns.by_language.map((r: any, i: number) => (
                             <LangRow key={i} name={r.label} pct={r.perc} visits={r.visits} color={COLORS[i % COLORS.length]} />
                         ))}
                     </div>

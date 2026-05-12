@@ -15,8 +15,9 @@ import { DetailTableItem, ProductSummaryMetric } from "@/lib/types/api";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatEuro(value: number): string {
-    const val = Math.abs(value);
+function formatEuro(value: number | string): string {
+    const n = typeof value === 'string' ? parseFloat(value) : value;
+    const val = Math.abs(n);
     return `€ ${val.toLocaleString("de-DE")}`;
 }
 
@@ -50,14 +51,14 @@ function MiniChart({
     color: string;
     xLabels: string[];
 }) {
-    const values = metric.trend.map(t => t.value);
+    const values = metric.trend.map(t => typeof t === 'number' ? t : t.value);
     if (values.length === 0) {
         return <div style={{ height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#cbd5e1' }}>No trend data</div>;
     }
 
     const data = metric.trend.map((t, i) => ({ 
         d: xLabels[i] || '', 
-        value: t.value 
+        value: typeof t === 'number' ? t : t.value 
     }));
     
     const max = Math.max(...values, 1);
@@ -117,7 +118,7 @@ function StatCard({
     isNegative = false,
 }: {
     label: string;
-    value: number;
+    value: number | string;
     sub: string;
     metric: ProductSummaryMetric;
     color: string;
@@ -161,15 +162,18 @@ export default function DiscountsRefundsDashboard() {
     const weekLabels = useMemo(() => {
         if (!data) return [];
         const days = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-        return data.summary.total_discounts.trend.map(t => days[new Date(t.date).getDay()]);
+        return data.summary.total_discounts.trend.map(t => {
+            if (typeof t === 'number') return "";
+            return days[new Date(t.date).getDay()];
+        });
     }, [data]);
 
     if (isLoading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading Discounts & Refunds...</div>;
     if (error || !data) return <div style={{ padding: 40, textAlign: 'center', color: 'red' }}>Error loading data.</div>;
 
     const { summary, detail_table } = data;
-    const totalApplied = detail_table.reduce((s, r) => s + r.times_applied, 0);
-    const totalAmount = detail_table.reduce((s, r) => s + r.amount, 0);
+    const totalApplied = detail_table.reduce((s: number, r) => s + r.times_applied, 0);
+    const totalAmount = detail_table.reduce((s: number, r) => s + r.amount, 0);
 
     return (
         <div style={{ background: "#f8fafc", minHeight: "100vh", padding: "24px", boxSizing: "border-box", fontFamily: "'Inter', sans-serif" }}>

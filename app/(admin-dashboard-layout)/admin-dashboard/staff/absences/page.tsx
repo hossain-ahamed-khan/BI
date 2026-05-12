@@ -7,6 +7,7 @@ import {
     Tooltip,
     ResponsiveContainer,
     Bar,
+    BarChart,
     ComposedChart,
     Area,
 } from "recharts";
