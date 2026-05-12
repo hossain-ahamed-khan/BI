@@ -27,129 +27,129 @@ const data = {
   navMain: [
     {
       title: "Overview",
-      url: "/",
+      url: "/admin-dashboard",
       icon: ChartColumnBig,
       isActive: true,
     },
     {
       title: "Sales",
-      url: "/sales",
+      url: "/admin-dashboard/sales",
       icon: Gem,
       items: [
         {
           title: "Global Revenue",
-          url: "/sales/global-revenue",
+          url: "/admin-dashboard/sales/global-revenue",
         },
         {
           title: "Sales by Area",
-          url: "/sales/by-area",
+          url: "/admin-dashboard/sales/by-area",
         },
         {
           title: "Sales by Category",
-          url: "/sales/by-category",
+          url: "/admin-dashboard/sales/by-category",
         },
         {
           title: "Sales by Product",
-          url: "/sales/by-product",
+          url: "/admin-dashboard/sales/by-product",
         },
         {
           title: "Sales by Trend",
-          url: "/sales/by-trend",
+          url: "/admin-dashboard/sales/by-trend",
         },
         {
           title: "Discounts & Refunds",
-          url: "/sales/discounts-refunds",
+          url: "/admin-dashboard/sales/discounts-refunds",
         },
         {
           title: "Tips",
-          url: "/sales/tips",
+          url: "/admin-dashboard/sales/tips",
         },
         {
           title: "Payment Methods",
-          url: "/sales/payment-methods",
+          url: "/admin-dashboard/sales/payment-methods",
         },
       ],
     },
     {
       title: "CRM",
-      url: "/crm",
+      url: "/admin-dashboard/crm",
       icon: CircleDot,
       items: [
         {
           title: "Clients",
-          url: "/crm/clients",
+          url: "/admin-dashboard/crm/clients",
         },
         {
           title: "Loyalty",
-          url: "/crm/loyalty",
+          url: "/admin-dashboard/crm/loyalty",
         },
         {
           title: "Guest Satisfaction",
-          url: "/crm/guest-satisfaction",
+          url: "/admin-dashboard/crm/guest-satisfaction",
         },
         {
           title: "Customer Service",
-          url: "/crm/customer-service",
+          url: "/admin-dashboard/crm/customer-service",
         },
       ],
     },
     {
       title: "Reservations",
-      url: "/reservations",
+      url: "/admin-dashboard/reservations",
       icon: CalendarDays,
     },
     {
       title: "Marketing",
-      url: "/marketing",
+      url: "/admin-dashboard/marketing",
       icon: Megaphone,
       items: [
         {
           title: "Website Analytics",
-          url: "/marketing/website-analytics",
+          url: "/admin-dashboard/marketing/website-analytics",
         },
         {
           title: "Booking Widget",
-          url: "/marketing/booking-widget",
+          url: "/admin-dashboard/marketing/booking-widget",
         },
         {
           title: "Paid Media",
-          url: "/marketing/paid-media",
+          url: "/admin-dashboard/marketing/paid-media",
         },
       ],
     },
     {
       title: "Staff",
-      url: "/staff",
+      url: "/admin-dashboard/staff",
       icon: Users2,
       items: [
         {
           title: "Labour Cost",
-          url: "/staff/labour-cost",
+          url: "/admin-dashboard/staff/labour-cost",
         },
         {
           title: "Absences",
-          url: "/staff/absences",
+          url: "/admin-dashboard/staff/absences",
         },
       ],
     },
     {
       title: "F & B",
-      url: "/f-and-b",
+      url: "/admin-dashboard/f-and-b",
       icon: UtensilsCrossed,
       items: [
         {
           title: "Performance",
-          url: "/f-and-b/performance",
+          url: "/admin-dashboard/f-and-b/performance",
         },
         {
           title: "Stock & Purchasing",
-          url: "/f-and-b/stock-purchasing",
+          url: "/admin-dashboard/f-and-b/stock-purchasing",
         },
       ],
     },
     {
       title: "Reports",
-      url: "/reports",
+      url: "/admin-dashboard/reports",
       icon: FileText,
     },
   ],
@@ -168,6 +168,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             alt="Main logo"
             width={300}
             height={80}
+            style={{ height: 'auto' }}
             className="h-20 w-auto shrink-0 rounded-sm object-contain"
             priority
           />

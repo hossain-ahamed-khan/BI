@@ -1,125 +1,33 @@
 "use client";
-import React, { useState, useCallback, CSSProperties } from "react";
+import React, { useState, useCallback, CSSProperties, useMemo } from "react";
+import { useRange } from "@/components/range-context";
+import { useSalesByCategory } from "@/hooks/use-metrics";
+import { CategoryTableItem, CategoryProduct } from "@/lib/types/api";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-interface CategoryItem {
-    name: string;
-    productsSold: number;
-    grossRevenue: number;
-    netRevenue: number;
-    pctOfTotal: number;
-}
-
-interface Category extends CategoryItem {
-    items: CategoryItem[];
-}
-
-interface Series {
-    label: string;
-    color: string;
-    values: number[];
-}
-
-type SortKey = keyof Omit<CategoryItem, "name">;
+type SortKey = keyof Omit<CategoryTableItem, "category" | "top_products">;
 type SortDir = "asc" | "desc";
-
-// ── Data ───────────────────────────────────────────────────────────────────────
-
-const DAYS: string[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-const SERIES: Series[] = [
-    { label: "Bar & Cocktails", color: "#7c6fcd", values: [4.8, 4.9, 5.1, 6.0, 7.3, 8.1, 7.8] },
-    { label: "Food Mains", color: "#f97316", values: [4.4, 4.6, 4.8, 5.8, 6.9, 7.5, 7.2] },
-    { label: "Spirits", color: "#10b981", values: [4.1, 4.2, 4.4, 5.2, 6.2, 6.7, 6.5] },
-    { label: "Champagne & Wine", color: "#059669", values: [3.8, 3.9, 4.1, 4.9, 5.8, 6.2, 6.1] },
-    { label: "Food Starters", color: "#8b5cf6", values: [3.3, 3.4, 3.6, 4.4, 5.1, 5.4, 5.2] },
-    { label: "Soft Drinks", color: "#fb923c", values: [0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8] },
-];
-
-const CATEGORIES: Category[] = [
-    {
-        name: "Bar & Cocktails", productsSold: 3285, grossRevenue: 49275, netRevenue: 43362, pctOfTotal: 24.6,
-        items: [
-            { name: "Jacqueline Sig.", productsSold: 900, grossRevenue: 13500, netRevenue: 11880, pctOfTotal: 6.7 },
-            { name: "Spicy Margarita", productsSold: 750, grossRevenue: 11250, netRevenue: 9900, pctOfTotal: 5.6 },
-            { name: "Pornstar Martini", productsSold: 620, grossRevenue: 9300, netRevenue: 8184, pctOfTotal: 4.6 },
-            { name: "Espresso Martini", productsSold: 405, grossRevenue: 6075, netRevenue: 5346, pctOfTotal: 3.0 },
-        ],
-    },
-    {
-        name: "Food Mains", productsSold: 1760, grossRevenue: 44800, netRevenue: 39424, pctOfTotal: 22.3,
-        items: [
-            { name: "Black Cod", productsSold: 520, grossRevenue: 10400, netRevenue: 9152, pctOfTotal: 5.2 },
-            { name: "Wagyu Steak", productsSold: 180, grossRevenue: 9000, netRevenue: 7920, pctOfTotal: 4.5 },
-            { name: "Steak Tartare", productsSold: 370, grossRevenue: 9000, netRevenue: 7920, pctOfTotal: 4.5 },
-            { name: "Ceviche", productsSold: 415, grossRevenue: 8225, netRevenue: 5478, pctOfTotal: 3.1 },
-        ],
-    },
-    {
-        name: "Spirits", productsSold: 180, grossRevenue: 36000, netRevenue: 31680, pctOfTotal: 17.9,
-        items: [
-            { name: "Don Julio 1942", productsSold: 18, grossRevenue: 14400, netRevenue: 12672, pctOfTotal: 7.2 },
-            { name: "Macallan 18", productsSold: 12, grossRevenue: 7200, netRevenue: 6336, pctOfTotal: 3.6 },
-            { name: "Grey Goose", productsSold: 80, grossRevenue: 6400, netRevenue: 5632, pctOfTotal: 3.2 },
-        ],
-    },
-    {
-        name: "Champagne & Wine", productsSold: 210, grossRevenue: 34500, netRevenue: 30360, pctOfTotal: 17.2,
-        items: [
-            { name: "Dom Pérignon", productsSold: 24, grossRevenue: 12000, netRevenue: 10500, pctOfTotal: 6.0 },
-            { name: "Vega Sicilia", productsSold: 36, grossRevenue: 9000, netRevenue: 7920, pctOfTotal: 4.5 },
-            { name: "Ruinart Blanc", productsSold: 30, grossRevenue: 7500, netRevenue: 6600, pctOfTotal: 3.7 },
-        ],
-    },
-    {
-        name: "Food Starters", productsSold: 1840, grossRevenue: 27600, netRevenue: 24288, pctOfTotal: 13.8,
-        items: [
-            { name: "Oysters", productsSold: 325, grossRevenue: 7800, netRevenue: 6864, pctOfTotal: 3.9 },
-            { name: "Foie Gras", productsSold: 210, grossRevenue: 6300, netRevenue: 5544, pctOfTotal: 3.1 },
-            { name: "Burrata", productsSold: 240, grossRevenue: 3600, netRevenue: 3168, pctOfTotal: 1.8 },
-        ],
-    },
-    {
-        name: "Soft Drinks", productsSold: 2100, grossRevenue: 8400, netRevenue: 7392, pctOfTotal: 4.2,
-        items: [
-            { name: "Still Water", productsSold: 800, grossRevenue: 3200, netRevenue: 2816, pctOfTotal: 1.6 },
-            { name: "Sparkling", productsSold: 600, grossRevenue: 2400, netRevenue: 2112, pctOfTotal: 1.2 },
-            { name: "Juices", productsSold: 700, grossRevenue: 2100, netRevenue: 1848, pctOfTotal: 1.0 },
-        ],
-    },
-];
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function fmtEur(n: number): string {
-    return "€ " + n.toLocaleString("de-DE", { minimumFractionDigits: 0 });
+    return "€ " + Math.round(n).toLocaleString("de-DE", { minimumFractionDigits: 0 });
 }
 
 function fmtNum(n: number): string {
-    return n.toLocaleString("de-DE");
+    return Math.round(n).toLocaleString("de-DE");
 }
 
 // Chart viewport constants
-const CHART_W = 800;
-const CHART_H = 170;
-const PAD_L = 50;
-const PAD_R = 20;
-const PAD_T = 10;
-const PAD_B = 30;
-const MAX_VAL = 10;
+const CHART_W = 1000;
+const CHART_H = 300;
+const PAD_L = 60;
+const PAD_R = 40;
+const PAD_T = 20;
+const PAD_B = 40;
 
-function toX(index: number): number {
-    return PAD_L + (index / (DAYS.length - 1)) * (CHART_W - PAD_L - PAD_R);
-}
-
-function toY(value: number): number {
-    return PAD_T + (1 - value / MAX_VAL) * (CHART_H - PAD_T - PAD_B);
-}
-
-function buildPolyPoints(values: number[]): string {
-    return values.map((v, i) => `${toX(i)},${toY(v)}`).join(" ");
-}
+const COLORS = ["#7c6fcd", "#f97316", "#10b981", "#059669", "#8b5cf6", "#fb923c", "#ec4899", "#3b82f6"];
 
 // ── Shared styles ──────────────────────────────────────────────────────────────
 
@@ -153,7 +61,7 @@ const thBaseStyle: CSSProperties = {
     userSelect: "none",
 };
 
-// ── LegendDot ──────────────────────────────────────────────────────────────────
+// ── Sub-components ─────────────────────────────────────────────────────────────
 
 interface LegendDotProps {
     color: string;
@@ -173,8 +81,6 @@ const LegendDot: React.FC<LegendDotProps> = ({ color }) => (
     />
 );
 
-// ── SortIndicator ──────────────────────────────────────────────────────────────
-
 interface SortIndicatorProps {
     column: SortKey;
     activeKey: SortKey | null;
@@ -186,110 +92,117 @@ const SortIndicator: React.FC<SortIndicatorProps> = ({ column, activeKey, dir })
     return <> {dir === "asc" ? "↑" : "↓"}</>;
 };
 
+import {
+    LineChart as ReLineChart,
+    Line,
+    XAxis as ReXAxis,
+    YAxis as ReYAxis,
+    CartesianGrid,
+    Tooltip as ReTooltip,
+    ResponsiveContainer,
+    Legend
+} from "recharts";
+
+// ── Custom Tooltip ─────────────────────────────────────────────────────────────
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+        return (
+            <div
+                style={{
+                    background: "#1e293b",
+                    color: "#fff",
+                    padding: "10px 12px",
+                    borderRadius: "8px",
+                    fontSize: "11px",
+                    boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                    border: "none",
+                    minWidth: "140px"
+                }}
+            >
+                <p style={{ margin: "0 0 8px", color: "#94a3b8", fontWeight: 600 }}>{label}</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    {payload.map((entry: any, index: number) => (
+                        <div key={index} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: entry.color }} />
+                                <span>{entry.name}</span>
+                            </div>
+                            <span style={{ fontWeight: 700 }}>{fmtEur(entry.value)}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+    return null;
+};
+
 // ── LineChart ──────────────────────────────────────────────────────────────────
 
-const LineChart: React.FC = () => (
-    <div style={{ width: "100%" }}>
-        {/* Legend */}
-        <div
-            style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "16px 20px",
-                justifyContent: "center",
-                marginBottom: 14,
-            }}
-        >
-            {SERIES.map((s) => (
-                <div
-                    key={s.label}
-                    style={{ display: "flex", alignItems: "center", fontSize: 11, color: "#555" }}
-                >
-                    <LegendDot color={s.color} />
-                    {s.label}
-                </div>
-            ))}
-        </div>
+interface LineChartProps {
+    categories: string[];
+    data: any[];
+}
 
-        {/* SVG chart */}
-        <svg
-            viewBox={`0 0 ${CHART_W} ${CHART_H}`}
-            style={{ width: "100%", height: "auto", display: "block" }}
-            xmlns="http://www.w3.org/2000/svg"
-        >
-            {/* Grid lines */}
-            {([0, 5, 10] as const).map((v) => (
-                <line
-                    key={v}
-                    x1={PAD_L}
-                    y1={toY(v)}
-                    x2={CHART_W - PAD_R}
-                    y2={toY(v)}
-                    stroke="#efefef"
-                    strokeWidth={1}
-                />
-            ))}
-
-            {/* Y-axis labels */}
-            {(
-                [
-                    { v: 10, label: "€10k" },
-                    { v: 5, label: "€5k" },
-                    { v: 0, label: "€0k" },
-                ] as const
-            ).map(({ v, label }) => (
-                <text
-                    key={v}
-                    x={PAD_L - 6}
-                    y={toY(v) + 4}
-                    textAnchor="end"
-                    fontSize={10}
-                    fill="#aaa"
-                >
-                    {label}
-                </text>
-            ))}
-
-            {/* Series polylines + dots */}
-            {SERIES.map((s) => (
-                <g key={s.label}>
-                    <polyline
-                        points={buildPolyPoints(s.values)}
-                        fill="none"
-                        stroke={s.color}
-                        strokeWidth={2}
-                        strokeLinejoin="round"
+const LineChart: React.FC<LineChartProps> = ({ categories, data }) => {
+    return (
+        <div style={{ width: "100%", height: 350 }}>
+            <ResponsiveContainer width="100%" height="100%">
+                <ReLineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <ReXAxis 
+                        dataKey="date" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fill: '#94a3b8', fontSize: 11 }}
+                        dy={10}
+                        tickFormatter={(val) => val.split('-').slice(1).join('/')}
                     />
-                    {s.values.map((v, i) => (
-                        <circle key={i} cx={toX(i)} cy={toY(v)} r={3.5} fill={s.color} />
-                    ))}
-                </g>
-            ))}
-
-            {/* X-axis labels */}
-            {DAYS.map((day, i) => (
-                <text
-                    key={day}
-                    x={toX(i)}
-                    y={CHART_H - 4}
-                    textAnchor="middle"
-                    fontSize={10}
-                    fill="#aaa"
-                >
-                    {day}
-                </text>
-            ))}
-        </svg>
-    </div>
-);
-
+                    <ReYAxis 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fill: '#94a3b8', fontSize: 11 }}
+                        tickFormatter={(val) => `€${(val/1000).toFixed(0)}k`}
+                    />
+                    <ReTooltip content={<CustomTooltip />} />
+                    <Legend 
+                        verticalAlign="top" 
+                        align="center" 
+                        height={50}
+                        iconType="circle"
+                        iconSize={8}
+                        wrapperStyle={{ fontSize: '11px', color: '#64748b', paddingBottom: '20px' }}
+                    />
+                    {categories.map((cat, i) => {
+                        const color = COLORS[i % COLORS.length];
+                        return (
+                            <Line
+                                key={cat}
+                                type="monotone"
+                                dataKey={cat}
+                                name={cat}
+                                stroke={color}
+                                strokeWidth={2.5}
+                                dot={{ r: 3, fill: color, strokeWidth: 0, fillOpacity: 1 }}
+                                activeDot={{ r: 5, strokeWidth: 0 }}
+                            />
+                        );
+                    })}
+                </ReLineChart>
+            </ResponsiveContainer>
+        </div>
+    );
+};
 // ── SalesTable ─────────────────────────────────────────────────────────────────
 
-const SalesTable: React.FC = () => {
-    const [expanded, setExpanded] = useState<Set<string>>(
-        () => new Set(CATEGORIES.map((c) => c.name))
-    );
-    const [sortKey, setSortKey] = useState<SortKey | null>(null);
+interface SalesTableProps {
+    data: CategoryTableItem[];
+}
+
+const SalesTable: React.FC<SalesTableProps> = ({ data }) => {
+    const [expanded, setExpanded] = useState<Set<string>>(new Set());
+    const [sortKey, setSortKey] = useState<SortKey | null>("gross_revenue");
     const [sortDir, setSortDir] = useState<SortDir>("desc");
 
     const toggleExpand = useCallback((name: string) => {
@@ -301,99 +214,97 @@ const SalesTable: React.FC = () => {
         });
     }, []);
 
-    const handleSort = useCallback(
-        (key: SortKey) => {
-            if (sortKey === key) {
-                setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-            } else {
-                setSortKey(key);
-                setSortDir("desc");
-            }
-        },
-        [sortKey]
-    );
+    const handleSort = useCallback((key: SortKey) => {
+        if (sortKey === key) {
+            setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+        } else {
+            setSortKey(key);
+            setSortDir("desc");
+        }
+    }, [sortKey]);
 
-    const sortedCategories: Category[] = sortKey
-        ? [...CATEGORIES].sort((a, b) => {
-            const diff = a[sortKey] - b[sortKey];
+    const sortedData = useMemo(() => {
+        if (!sortKey) return data;
+        return [...data].sort((a, b) => {
+            const diff = (a[sortKey] as number) - (b[sortKey] as number);
             return sortDir === "asc" ? diff : -diff;
-        })
-        : CATEGORIES;
+        });
+    }, [data, sortKey, sortDir]);
 
     const thLeft: CSSProperties = { ...thBaseStyle, textAlign: "left" };
     const thRight: CSSProperties = { ...thBaseStyle, textAlign: "right" };
 
     return (
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
                 <tr>
                     <th style={thLeft}>Category</th>
-                    <th style={thRight} onClick={() => handleSort("productsSold")}>
+                    <th style={thRight} onClick={() => handleSort("products_sold")}>
                         Products Sold
-                        <SortIndicator column="productsSold" activeKey={sortKey} dir={sortDir} />
+                        <SortIndicator column="products_sold" activeKey={sortKey} dir={sortDir} />
                     </th>
-                    <th style={thRight} onClick={() => handleSort("grossRevenue")}>
+                    <th style={thRight} onClick={() => handleSort("gross_revenue")}>
                         Gross Revenue
-                        <SortIndicator column="grossRevenue" activeKey={sortKey} dir={sortDir} />
+                        <SortIndicator column="gross_revenue" activeKey={sortKey} dir={sortDir} />
                     </th>
-                    <th style={thRight} onClick={() => handleSort("netRevenue")}>
+                    <th style={thRight} onClick={() => handleSort("net_revenue")}>
                         Net Revenue
-                        <SortIndicator column="netRevenue" activeKey={sortKey} dir={sortDir} />
+                        <SortIndicator column="net_revenue" activeKey={sortKey} dir={sortDir} />
                     </th>
-                    <th style={thRight} onClick={() => handleSort("pctOfTotal")}>
+                    <th style={thRight} onClick={() => handleSort("perc_of_total")}>
                         % of Total
-                        <SortIndicator column="pctOfTotal" activeKey={sortKey} dir={sortDir} />
+                        <SortIndicator column="perc_of_total" activeKey={sortKey} dir={sortDir} />
                     </th>
                 </tr>
             </thead>
             <tbody>
-                {sortedCategories.map((cat) => {
-                    const isOpen = expanded.has(cat.name);
+                {sortedData.map((cat) => {
+                    const isOpen = expanded.has(cat.category);
                     return (
-                        <React.Fragment key={cat.name}>
+                        <React.Fragment key={cat.category}>
                             {/* Category row */}
                             <tr
                                 style={{ borderBottom: "1px solid #f5f5f5", cursor: "pointer" }}
-                                onClick={() => toggleExpand(cat.name)}
+                                onClick={() => toggleExpand(cat.category)}
                             >
-                                <td style={{ padding: "12px 8px 6px", fontWeight: 600, color: "#222", fontSize: 12 }}>
-                                    {cat.name}
-                                    <span style={{ fontSize: 10, color: "#aaa", marginLeft: 4 }}>
+                                <td style={{ padding: "14px 8px", fontWeight: 600, color: "#222" }}>
+                                    {cat.category}
+                                    <span style={{ fontSize: 10, color: "#aaa", marginLeft: 6 }}>
                                         {isOpen ? "▴" : "▾"}
                                     </span>
                                 </td>
-                                <td style={{ padding: "12px 8px 6px", textAlign: "right", color: "#333" }}>
-                                    {fmtNum(cat.productsSold)}
+                                <td style={{ padding: "14px 8px", textAlign: "right", color: "#333" }}>
+                                    {fmtNum(cat.products_sold)}
                                 </td>
-                                <td style={{ padding: "12px 8px 6px", textAlign: "right", color: "#333" }}>
-                                    {fmtEur(cat.grossRevenue)}
+                                <td style={{ padding: "14px 8px", textAlign: "right", color: "#333" }}>
+                                    {fmtEur(cat.gross_revenue)}
                                 </td>
-                                <td style={{ padding: "12px 8px 6px", textAlign: "right", color: "#333" }}>
-                                    {fmtEur(cat.netRevenue)}
+                                <td style={{ padding: "14px 8px", textAlign: "right", color: "#333" }}>
+                                    {fmtEur(cat.net_revenue)}
                                 </td>
-                                <td style={{ padding: "12px 8px 6px", textAlign: "right", color: "#6366f1", fontWeight: 500 }}>
-                                    {cat.pctOfTotal.toFixed(1)}%
+                                <td style={{ padding: "14px 8px", textAlign: "right", color: "#6366f1", fontWeight: 600 }}>
+                                    {cat.perc_of_total.toFixed(1)}%
                                 </td>
                             </tr>
 
                             {/* Item rows */}
                             {isOpen &&
-                                cat.items.map((item) => (
-                                    <tr key={item.name} style={{ borderBottom: "1px solid #f9f9f9" }}>
-                                        <td style={{ padding: "8px 8px 8px 24px", color: "#666", fontSize: 12 }}>
+                                cat.top_products.map((item) => (
+                                    <tr key={item.name} style={{ borderBottom: "1px solid #f9f9f9", background: "#fafafa" }}>
+                                        <td style={{ padding: "10px 8px 10px 32px", color: "#666", fontSize: 12 }}>
                                             ↳ {item.name}
                                         </td>
-                                        <td style={{ padding: "8px", textAlign: "right", color: "#666" }}>
-                                            {fmtNum(item.productsSold)}
+                                        <td style={{ padding: "10px 8px", textAlign: "right", color: "#666", fontSize: 12 }}>
+                                            {fmtNum(item.qty)}
                                         </td>
-                                        <td style={{ padding: "8px", textAlign: "right", color: "#666" }}>
-                                            {fmtEur(item.grossRevenue)}
+                                        <td style={{ padding: "10px 8px", textAlign: "right", color: "#666", fontSize: 12 }}>
+                                            {fmtEur(item.gross_revenue)}
                                         </td>
-                                        <td style={{ padding: "8px", textAlign: "right", color: "#666" }}>
-                                            {fmtEur(item.netRevenue)}
+                                        <td style={{ padding: "10px 8px", textAlign: "right", color: "#666", fontSize: 12 }}>
+                                            {fmtEur(item.net_revenue)}
                                         </td>
-                                        <td style={{ padding: "8px", textAlign: "right", color: "#6366f1", fontSize: 11 }}>
-                                            {item.pctOfTotal.toFixed(1)}%
+                                        <td style={{ padding: "10px 8px", textAlign: "right", color: "#6366f1", fontSize: 11, opacity: 0.8 }}>
+                                            {item.perc_of_total.toFixed(1)}%
                                         </td>
                                     </tr>
                                 ))}
@@ -407,37 +318,55 @@ const SalesTable: React.FC = () => {
 
 // ── RevenueDashboard (root) ────────────────────────────────────────────────────
 
-const RevenueDashboard: React.FC = () => (
-    <div
-        style={{
-            background: "#f4f5f7",
-            padding: 16,
-            minHeight: "100vh",
-            fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
-        }}
-    >
-        {/* Chart card */}
-        <div style={cardStyle}>
-            <p style={sectionTitleStyle}>Revenue by Category – Over Time</p>
-            <LineChart />
-        </div>
+export default function RevenueDashboard() {
+    const { activeRange, customStart, customEnd } = useRange();
+    const { data, isLoading, error } = useSalesByCategory(activeRange, customStart, customEnd);
 
-        {/* Table card */}
-        <div style={cardStyle}>
-            <div
-                style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: 10,
-                }}
-            >
-                <p style={{ ...sectionTitleStyle, marginBottom: 0 }}>Sales by Category</p>
-                <span style={{ fontSize: 10, color: "#9aa0ac" }}>↕ Click columns to sort</span>
+    if (isLoading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading Category Sales...</div>;
+    if (error || !data) return <div style={{ padding: 40, textAlign: 'center', color: 'red' }}>Error loading data.</div>;
+
+    return (
+        <div
+            style={{
+                background: "#f4f5f7",
+                padding: 16,
+                minHeight: "100vh",
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+            }}
+        >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <h1 style={{ fontSize: 18, fontWeight: 700, color: '#1a1a1a' }}>Sales by Category</h1>
+                <div style={{ fontSize: 11, color: '#64748b', background: '#fff', padding: '4px 10px', borderRadius: 99, border: '1px solid #e2e8f0' }}>
+                    Data period: <span style={{ fontWeight: 700, color: '#6366f1', textTransform: 'capitalize' }}>{activeRange}</span>
+                </div>
             </div>
-            <SalesTable />
-        </div>
-    </div>
-);
 
-export default RevenueDashboard;
+            {/* Chart card */}
+            <div style={{ ...cardStyle, position: 'relative' }}>
+                {isLoading && (
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.7)', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', borderRadius: 12 }}>
+                        <p style={{ fontSize: 12, fontWeight: 600, color: '#6366f1' }}>Updating chart...</p>
+                    </div>
+                )}
+                <p style={sectionTitleStyle}>Revenue by Category – Over Time</p>
+                <LineChart categories={data.chart.categories} data={data.chart.data} />
+            </div>
+
+            {/* Table card */}
+            <div style={cardStyle}>
+                <div
+                    style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: 10,
+                    }}
+                >
+                    <p style={{ ...sectionTitleStyle, marginBottom: 0 }}>Sales by Category</p>
+                    <span style={{ fontSize: 10, color: "#9aa0ac" }}>↕ Click columns to sort</span>
+                </div>
+                <SalesTable data={data.table.data} />
+            </div>
+        </div>
+    );
+}

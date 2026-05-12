@@ -1,442 +1,220 @@
 "use client";
-import { useState } from "react";
+import React, { useMemo } from "react";
+import { useRange } from "@/components/range-context";
+import { usePaidMediaData } from "@/hooks/use-metrics";
+import { PaidMediaChannel } from "@/lib/types/api";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-
-
-interface ChannelRow {
-    name: string;
-    color: string;
-    spend: string;
-    impressions: string;
-    clicks: string;
-    ctr: string;
-    ctrHighlight?: boolean;
-    cpc: string;
-    conv: number;
-    cpa: string;
-    cpaColor?: string;
-    roas: string;
-    roasColor?: string;
-    valueGenerated: string;
+function fmtEur(n: number): string {
+    return "€" + Math.round(n).toLocaleString("de-DE");
 }
 
-interface ReservationRow {
-    name: string;
-    color: string;
-    booked: number;
-    assisted: number;
-    cancelled: number;
-    cancelRate: string;
-    future: number;
-}
-
-interface ChannelCard {
-    name: string;
-    color: string;
-    dotColor: string;
-    spend: string;
-    metrics: { label: string; value: string; highlight?: "green" | "amber" }[];
-    barColor: string;
-    bars: number[];
-    maxBar: number;
-    yLabels: string[];
+function fmtNum(n: number): string {
+    return Math.round(n).toLocaleString("de-DE");
 }
 
 // ─── Sparkline ────────────────────────────────────────────────────────────────
 
-interface SparklineConfig {
-    color: string;
-    trend?: "up" | "down";
-    yRight: string[];   // 3 labels top→bottom on right axis
-    yLeft?: string[];   // optional left axis labels
-    data: number[];     // 7 values, 0–1 normalised
-}
+function Sparkline({ color, data, xLabels }: { color: string; data: number[]; xLabels: string[] }) {
+    const W = 200, H = 52, padL = 4, padR = 32, padT = 6, padB = 18;
+    const chartW = W - padL - padR, chartH = H - padT - padB;
+    const n = data.length;
+    
+    if (n === 0) return <div style={{ height: H, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: '#cbd5e1' }}>No trend</div>;
 
-function Sparkline({ color, trend = "up", yRight, data }: SparklineConfig) {
-    const W = 200;
-    const H = 52;
-    const PAD_L = 4;
-    const PAD_R = 32;        // room for right-axis labels
-    const PAD_T = 6;
-    const PAD_B = 18;        // room for day labels
-    const days = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
-    const chartW = W - PAD_L - PAD_R;
-    const chartH = H - PAD_T - PAD_B;
+    const min = Math.min(...data);
+    const max = Math.max(...data, 1);
+    const range = max - min || 1;
 
-    // map normalised data → svg coords
     const pts = data.map((v, i) => ({
-        x: PAD_L + (i / (data.length - 1)) * chartW,
-        y: PAD_T + (1 - v) * chartH,
+        x: padL + (i / Math.max(1, n - 1)) * chartW,
+        y: padT + chartH - ((v - min) / range) * chartH,
     }));
 
-    const polyPoints = pts.map(p => `${p.x},${p.y}`).join(" ");
-    const fillD = `M${pts[0].x},${pts[0].y} ` +
-        pts.slice(1).map(p => `L${p.x},${p.y}`).join(" ") +
-        ` L${pts[pts.length - 1].x},${PAD_T + chartH} L${pts[0].x},${PAD_T + chartH} Z`;
-
-    const gradId = `sg-${color.replace("#", "")}-${trend}`;
-
-    // right-axis: 3 evenly spaced labels (top, mid, bottom of chart)
-    const rightAxisYs = [PAD_T, PAD_T + chartH / 2, PAD_T + chartH];
+    const polyPoints = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+    const gradId = `sg-${color.replace("#", "")}`;
 
     return (
         <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 80 }} overflow="visible">
             <defs>
                 <linearGradient id={gradId} x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor={color} stopOpacity="0.22" />
-                    <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+                    <stop offset="0%" stopColor={color} stopOpacity={0.18} />
+                    <stop offset="100%" stopColor={color} stopOpacity={0.01} />
                 </linearGradient>
             </defs>
+            <path d={`${polyPoints} L${pts[n-1].x},${padT + chartH} L${pts[0].x},${padT + chartH} Z`} fill={`url(#${gradId})`} />
+            <polyline points={polyPoints} fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            {pts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r="2" fill={color} stroke="#fff" strokeWidth={0.5} />)}
+            
+            {/* Y Ticks */}
+            <text x={W - padR + 4} y={padT + 3} fontSize="7" fill="#cbd5e1" fontWeight="700" dominantBaseline="middle">{max >= 1000 ? `${(max/1000).toFixed(0)}k` : max}</text>
+            <text x={W - padR + 4} y={padT + chartH + 3} fontSize="7" fill="#cbd5e1" fontWeight="700" dominantBaseline="middle">{min >= 1000 ? `${(min/1000).toFixed(0)}k` : min}</text>
 
-            {/* filled area */}
-            <path d={fillD} fill={`url(#${gradId})`} />
-
-            {/* line */}
-            <polyline
-                points={polyPoints}
-                fill="none"
-                stroke={color}
-                strokeWidth="1.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-
-            {/* dots */}
-            {pts.map((p, i) => (
-                <circle key={i} cx={p.x} cy={p.y} r="2.2" fill={color} />
-            ))}
-
-            {/* right y-axis labels */}
-            {yRight.map((label, i) => (
-                <text
-                    key={i}
-                    x={W - PAD_R + 4}
-                    y={rightAxisYs[i] + 3}
-                    fontSize="7"
-                    fill="#9ca3af"
-                    dominantBaseline="middle"
-                >
-                    {label}
-                </text>
-            ))}
-
-            {/* x-axis day labels */}
-            {days.map((d, i) => (
-                <text
-                    key={i}
-                    x={PAD_L + (i / (days.length - 1)) * chartW}
-                    y={H - 2}
-                    fontSize="7"
-                    fill="#9ca3af"
-                    textAnchor="middle"
-                >
-                    {d}
-                </text>
+            {/* X Labels */}
+            {xLabels.map((d, i) => (
+                <text key={i} x={padL + (i / Math.max(1, xLabels.length - 1)) * chartW} y={H - 2} fontSize="7" fill="#94a3b8" textAnchor="middle" fontWeight="600">{d}</text>
             ))}
         </svg>
-    );
-}
-
-// ─── Mini Bar Chart ───────────────────────────────────────────────────────────
-
-function BarChart({ bars, color, maxBar, yLabels }: { bars: number[]; color: string; maxBar: number; yLabels: string[] }) {
-    const h = 110;
-    const barW = 16;
-    const gap = 6;
-    const total = bars.length * (barW + gap) - gap;
-
-    return (
-        <svg viewBox={`0 0 ${total + 30} ${h + 20}`} style={{ width: "100%", height: 130 }}>
-            {yLabels.map((label, i) => {
-                const y = h - (i / (yLabels.length - 1)) * h;
-                return (
-                    <g key={i}>
-                        <line x1={28} y1={y} x2={total + 30} y2={y} stroke="#e5e7eb" strokeWidth="0.5" />
-                        <text x={24} y={y + 4} textAnchor="end" fontSize="8" fill="#9ca3af">{label}</text>
-                    </g>
-                );
-            })}
-            {bars.map((val, i) => {
-                const barH = (val / maxBar) * h;
-                const x = 30 + i * (barW + gap);
-                const y = h - barH;
-                return <rect key={i} x={x} y={y} width={barW} height={barH} rx="2" fill={color} />;
-            })}
-        </svg>
-    );
-}
-
-// ─── KPI Card ─────────────────────────────────────────────────────────────────
-
-function KpiCard({
-    label,
-    value,
-    badge,
-    badgeUp,
-    sub,
-    sparkColor,
-    sparkTrend,
-    sparkData,
-    sparkYRight,
-}: {
-    label: string;
-    value: string;
-    badge?: string;
-    badgeUp?: boolean;
-    sub?: string;
-    sparkColor: string;
-    sparkTrend?: "up" | "down";
-    sparkData: number[];
-    sparkYRight: string[];
-}) {
-    return (
-        <div style={styles.kpiCard}>
-            <div style={styles.kpiLabel}>{label}</div>
-            <div style={styles.kpiValue}>{value}</div>
-            {badge && (
-                <div style={{ ...styles.badge, color: badgeUp ? "#16a34a" : "#dc2626" }}>
-                    {badgeUp ? "▲" : "▼"} {badge}
-                </div>
-            )}
-            {sub && <div style={styles.kpiSub}>{sub}</div>}
-            <Sparkline color={sparkColor} trend={sparkTrend} data={sparkData} yRight={sparkYRight} />
-        </div>
     );
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function AdDashboard() {
-    const [activeTab] = useState(0);
+    const { activeRange, customStart, customEnd } = useRange();
+    const { data, isLoading, error } = usePaidMediaData(activeRange, customStart, customEnd);
 
-    const channelRows: ChannelRow[] = [
-        {
-            name: "Google Ads", color: "#3b82f6",
-            spend: "€ 1,840", impressions: "84,200", clicks: "2,840",
-            ctr: "3.37%", ctrHighlight: true, cpc: "€ 0.65",
-            conv: 128, cpa: "€14.4", roas: "4.8×", roasColor: "#16a34a",
-            valueGenerated: "€ 8,832",
-        },
-        {
-            name: "Meta Ads", color: "#ef4444",
-            spend: "€ 980", impressions: "98,400", clicks: "1,920",
-            ctr: "1.95%", cpc: "€ 0.51",
-            conv: 86, cpa: "€11.4", roas: "3.8×", roasColor: "#16a34a",
-            valueGenerated: "€ 3,724",
-        },
-        {
-            name: "TikTok Ads", color: "#111827",
-            spend: "€ 420", impressions: "248,000", clicks: "1,240",
-            ctr: "0.50%", cpc: "€ 0.34",
-            conv: 24, cpa: "€17.5", cpaColor: "#dc2626", roas: "2.1×",
-            valueGenerated: "€ 882",
-        },
-    ];
+    const xLabels = useMemo(() => {
+        if (!data) return [];
+        const days = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+        // Using ad spend trend as a proxy for labels
+        const trend = data.summary.total_ad_spend.trend as any[];
+        return trend.map(t => days[new Date(t.date || Date.now()).getDay()]);
+    }, [data]);
 
-    const reservationRows: ReservationRow[] = [
-        { name: "Google Ads", color: "#3b82f6", booked: 128, assisted: 44, cancelled: 11, cancelRate: "8.6%", future: 38 },
-        { name: "Meta Ads", color: "#ef4444", booked: 86, assisted: 32, cancelled: 9, cancelRate: "10.5%", future: 22 },
-        { name: "TikTok Ads", color: "#111827", booked: 24, assisted: 18, cancelled: 5, cancelRate: "20.8%", future: 6 },
-    ];
+    if (isLoading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading Paid Media Data...</div>;
+    if (error || !data) return <div style={{ padding: 40, textAlign: 'center', color: 'red' }}>Error loading analytics.</div>;
 
-    const channelCards: ChannelCard[] = [
-        {
-            name: "GOOGLE ADS", color: "#3b82f6", dotColor: "#3b82f6", spend: "€1,840",
-            metrics: [
-                { label: "IMPRESSIONS", value: "84,200" },
-                { label: "CLICKS", value: "2,840" },
-                { label: "CTR", value: "3.37%", highlight: "green" },
-                { label: "CPC", value: "€ 0.65" },
-                { label: "CONVERSIONS", value: "128", highlight: "green" },
-                { label: "CPA", value: "€14.4", highlight: "green" },
-            ],
-            barColor: "#93c5fd",
-            bars: [110, 130, 140, 170, 160, 150, 200],
-            maxBar: 300, yLabels: ["€0", "€100", "€200", "€300"],
-        },
-        {
-            name: "META ADS", color: "#ec4899", dotColor: "#ec4899", spend: "€980",
-            metrics: [
-                { label: "REACH", value: "42,100" },
-                { label: "IMPRESSIONS", value: "98,400" },
-                { label: "CPM", value: "€9.96" },
-                { label: "CTR", value: "1.95%" },
-                { label: "CONVERSIONS", value: "86", highlight: "green" },
-                { label: "CPA", value: "€11.4", highlight: "green" },
-            ],
-            barColor: "#f472b6",
-            bars: [55, 75, 60, 90, 75, 65, 105],
-            maxBar: 150, yLabels: ["€0", "€50", "€100", "€150"],
-        },
-        {
-            name: "TIKTOK ADS", color: "#111827", dotColor: "#111827", spend: "€420",
-            metrics: [
-                { label: "VIEWS", value: "248K" },
-                { label: "LINK CLICKS", value: "1,240" },
-                { label: "ENGAGEMENT", value: "4.2%" },
-                { label: "CTR", value: "0.50%", highlight: "amber" },
-                { label: "CONVERSIONS", value: "24", highlight: "amber" },
-                { label: "CPA", value: "€17.5", highlight: "amber" },
-            ],
-            barColor: "#374151",
-            bars: [28, 35, 38, 45, 42, 32, 38],
-            maxBar: 60, yLabels: ["€0", "€20", "€40", "€60"],
-        },
-    ];
+    const { summary, channel_performance } = data;
+
+    const totals = {
+        spend: channel_performance.reduce((s, c) => s + c.spend, 0),
+        impressions: channel_performance.reduce((s, c) => s + c.impressions, 0),
+        clicks: channel_performance.reduce((s, c) => s + c.clicks, 0),
+        conv: channel_performance.reduce((s, c) => s + c.conv, 0),
+        value: summary.revenue_generated.value,
+    };
+
+    const getChannelColor = (name: string) => {
+        if (name.includes("Google")) return "#3b82f6";
+        if (name.includes("Meta")) return "#ef4444";
+        return "#111827";
+    };
 
     return (
         <div style={styles.root}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <h1 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a' }}>Paid Media Analysis</h1>
+                <div style={{ fontSize: 11, color: '#64748b', background: '#fff', padding: '6px 12px', borderRadius: 99, border: '1px solid #e2e8f0' }}>
+                    Data period: <span style={{ fontWeight: 700, color: '#6366f1', textTransform: 'capitalize' }}>{activeRange}</span>
+                </div>
+            </div>
+
             {/* ── KPI Row ── */}
             <div style={styles.kpiRow}>
-                <KpiCard label="TOTAL AD SPEND" value="€ 3,240" sub="YTD: € 18,420" sparkColor="#f59e0b" sparkTrend="up"
-                    sparkData={[0.55, 0.58, 0.60, 0.63, 0.67, 0.72, 0.78]}
-                    sparkYRight={["4,000", "3,000", "2,000"]} />
-                <KpiCard label="TOTAL CONVERSIONS" value="238" badge="+8.2% vs LW" badgeUp sub="Reservations booked" sparkColor="#10b981" sparkTrend="up"
-                    sparkData={[0.55, 0.60, 0.63, 0.67, 0.72, 0.78, 0.85]}
-                    sparkYRight={["250", "200", "150"]} />
-                <KpiCard label="BLENDED CPA" value="€13.61" badge="-1.4% vs LW" badgeUp={false} sub="Cost per reservation" sparkColor="#8b5cf6" sparkTrend="down"
-                    sparkData={[0.85, 0.80, 0.75, 0.72, 0.68, 0.65, 0.60]}
-                    sparkYRight={["20", "15", "10"]} />
-                <KpiCard label="REVENUE GENERATED" value="€16,422" badge="+9.4% vs LW" badgeUp sub="ROAS 4.2× blended" sparkColor="#10b981" sparkTrend="up"
-                    sparkData={[0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.82]}
-                    sparkYRight={["5", "4", "3"]} />
-                <KpiCard label="BLENDED CTR" value="2.84%" badge="+0.2pp vs LW" badgeUp sparkColor="#6366f1" sparkTrend="up"
-                    sparkData={[0.55, 0.58, 0.60, 0.63, 0.65, 0.68, 0.72]}
-                    sparkYRight={["3.0", "2.5", "2.0"]} />
+                <div style={styles.kpiCard}>
+                    <div style={styles.kpiLabel}>TOTAL AD SPEND</div>
+                    <div style={styles.kpiValue}>{fmtEur(summary.total_ad_spend.value as number)}</div>
+                    <div style={styles.kpiSub}>YTD: €0</div>
+                    <Sparkline color="#f59e0b" data={summary.total_ad_spend.trend as number[]} xLabels={xLabels} />
+                </div>
+                <div style={styles.kpiCard}>
+                    <div style={styles.kpiLabel}>TOTAL CONVERSIONS</div>
+                    <div style={styles.kpiValue}>{summary.total_conversions.value}</div>
+                    <div style={{ ...styles.badge, color: "#16a34a", background: "#f0fdf4" }}>▲ 0% vs LW</div>
+                    <Sparkline color="#10b981" data={summary.total_conversions.trend as number[] || []} xLabels={xLabels} />
+                </div>
+                <div style={styles.kpiCard}>
+                    <div style={styles.kpiLabel}>BLENDED CPA</div>
+                    <div style={styles.kpiValue}>€{summary.blended_cpa.value.toFixed(2)}</div>
+                    <div style={styles.kpiSub}>Cost per reservation</div>
+                    <Sparkline color="#8b5cf6" data={[]} xLabels={xLabels} />
+                </div>
+                <div style={styles.kpiCard}>
+                    <div style={styles.kpiLabel}>REVENUE GENERATED</div>
+                    <div style={styles.kpiValue}>{fmtEur(summary.revenue_generated.value)}</div>
+                    <div style={styles.kpiSub}>ROAS {summary.revenue_generated.roas}× blended</div>
+                    <Sparkline color="#10b981" data={[]} xLabels={xLabels} />
+                </div>
+                <div style={styles.kpiCard}>
+                    <div style={styles.kpiLabel}>BLENDED CTR</div>
+                    <div style={styles.kpiValue}>{summary.blended_ctr.value}</div>
+                    <div style={{ ...styles.badge, color: "#6366f1", background: "#f1f5f9" }}>▲ 0% vs LW</div>
+                    <Sparkline color="#6366f1" data={[]} xLabels={xLabels} />
+                </div>
             </div>
 
             {/* ── Channel Performance Table ── */}
             <div style={styles.card}>
                 <div style={styles.tableHeader}>
                     <span style={styles.sectionTitle}>PAID MEDIA — CHANNEL PERFORMANCE</span>
-                    <span style={styles.sectionSubRight}>AD SPEND &amp; MEDIA METRICS</span>
+                    <span style={styles.sectionSubRight}>LIVE MEDIA METRICS</span>
                 </div>
                 <table style={styles.table}>
                     <thead>
                         <tr style={styles.thead}>
-                            {["CHANNEL", "SPEND", "IMPRESSIONS", "CLICKS", "CTR", "CPC", "CONV.", "CPA", "ROAS", "VALUE GENERATED"].map(h => (
+                            {["CHANNEL", "SPEND", "IMPRESSIONS", "CLICKS", "CTR", "CPC", "CONV.", "CPA", "ROAS", "VALUE"].map(h => (
                                 <th key={h} style={styles.th}>{h}</th>
                             ))}
                         </tr>
                     </thead>
                     <tbody>
-                        {channelRows.map((row) => (
-                            <tr key={row.name} style={styles.tr}>
+                        {channel_performance.map((row) => (
+                            <tr key={row.channel} style={styles.tr}>
                                 <td style={styles.td}>
-                                    <span style={{ ...styles.dot, background: row.color }} />
-                                    {row.name}
+                                    <span style={{ ...styles.dot, background: getChannelColor(row.channel) }} />
+                                    {row.channel}
                                 </td>
-                                <td style={styles.td}>{row.spend}</td>
-                                <td style={styles.td}>{row.impressions}</td>
-                                <td style={styles.td}>{row.clicks}</td>
+                                <td style={styles.td}>{fmtEur(row.spend)}</td>
+                                <td style={styles.td}>{fmtNum(row.impressions)}</td>
+                                <td style={styles.td}>{fmtNum(row.clicks)}</td>
                                 <td style={styles.td}>
-                                    <span style={row.ctrHighlight ? styles.ctrBadge : undefined}>{row.ctr}</span>
+                                    <span style={styles.ctrBadge}>{row.ctr}</span>
                                 </td>
-                                <td style={styles.td}>{row.cpc}</td>
+                                <td style={styles.td}>€{row.cpc.toFixed(2)}</td>
                                 <td style={styles.td}>{row.conv}</td>
-                                <td style={{ ...styles.td, color: row.cpaColor || "#16a34a", fontWeight: 600 }}>{row.cpa}</td>
-                                <td style={{ ...styles.td, color: row.roasColor || "#374151", fontWeight: 600 }}>{row.roas}</td>
-                                <td style={styles.td}>{row.valueGenerated}</td>
+                                <td style={{ ...styles.td, color: "#16a34a", fontWeight: 600 }}>€{row.cpa.toFixed(1)}</td>
+                                <td style={{ ...styles.td, color: "#374151", fontWeight: 600 }}>{row.roas}×</td>
+                                <td style={styles.td}>{fmtEur(row.spend * row.roas)}</td>
                             </tr>
                         ))}
-                        <tr style={{ ...styles.tr, fontWeight: 700, borderTop: "1.5px solid #e5e7eb" }}>
+                        <tr style={{ ...styles.tr, fontWeight: 700, borderTop: "1.5px solid #e5e7eb", background: "#fcfcfd" }}>
                             <td style={styles.td}>Total</td>
-                            <td style={styles.td}>€ 3,240</td>
-                            <td style={styles.td}>430,600</td>
-                            <td style={styles.td}>6,000</td>
-                            <td style={styles.td}>1.39%</td>
-                            <td style={styles.td}>€ 0.54</td>
-                            <td style={styles.td}>238</td>
-                            <td style={styles.td}>€13.6</td>
-                            <td style={styles.td}>4.2×</td>
-                            <td style={styles.td}>€ 13,438</td>
+                            <td style={styles.td}>{fmtEur(totals.spend)}</td>
+                            <td style={styles.td}>{fmtNum(totals.impressions)}</td>
+                            <td style={styles.td}>{fmtNum(totals.clicks)}</td>
+                            <td style={styles.td}>{(totals.clicks/totals.impressions*100 || 0).toFixed(2)}%</td>
+                            <td style={styles.td}>€{(totals.spend/totals.clicks || 0).toFixed(2)}</td>
+                            <td style={styles.td}>{totals.conv}</td>
+                            <td style={styles.td}>€{(totals.spend/totals.conv || 0).toFixed(1)}</td>
+                            <td style={styles.td}>{(totals.value/totals.spend || 0).toFixed(2)}×</td>
+                            <td style={styles.td}>{fmtEur(totals.value)}</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
-            {/* ── Reservation Performance Table ── */}
-            <div style={styles.card}>
-                <div style={styles.tableHeader}>
-                    <div>
-                        <span style={styles.sectionTitle}>RESERVATION PERFORMANCE BY CHANNEL</span>
-                        <div style={styles.tableMeta}>
-                            Cross-referenced SevenRooms + UTM attribution &nbsp;
-                            <span style={{ color: "#3b82f6", textDecoration: "underline" }}>SevenRooms data</span>
-                        </div>
-                    </div>
-                    <div style={{ fontSize: 10, color: "#9ca3af", textAlign: "right" }}>
-                        Conv. = direct booking from ad click &nbsp;|&nbsp; Assisted = booking within 7-day click window
-                    </div>
-                </div>
-                <table style={styles.table}>
-                    <thead>
-                        <tr style={styles.thead}>
-                            <th style={styles.th}>CHANNEL</th>
-                            <th style={{ ...styles.th, color: "#16a34a" }}>BOOKED</th>
-                            <th style={styles.th}>ASSISTED</th>
-                            <th style={{ ...styles.th, color: "#dc2626" }}>CANCELLED</th>
-                            <th style={{ ...styles.th, color: "#dc2626" }}>CANCEL. RATE</th>
-                            <th style={{ ...styles.th, color: "#6366f1" }}>FUTURE RESERV.</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {reservationRows.map((row) => (
-                            <tr key={row.name} style={styles.tr}>
-                                <td style={styles.td}><span style={{ ...styles.dot, background: row.color }} />{row.name}</td>
-                                <td style={{ ...styles.td, color: "#16a34a", fontWeight: 600 }}>{row.booked}</td>
-                                <td style={styles.td}>{row.assisted}</td>
-                                <td style={{ ...styles.td, color: "#dc2626", fontWeight: 600 }}>{row.cancelled}</td>
-                                <td style={{ ...styles.td, color: "#dc2626" }}>{row.cancelRate}</td>
-                                <td style={{ ...styles.td, color: "#6366f1", fontWeight: 600 }}>{row.future}</td>
-                            </tr>
-                        ))}
-                        <tr style={{ ...styles.tr, fontWeight: 700, borderTop: "1.5px solid #e5e7eb" }}>
-                            <td style={styles.td}>Total</td>
-                            <td style={{ ...styles.td, color: "#16a34a", fontWeight: 700 }}>238</td>
-                            <td style={styles.td}>94</td>
-                            <td style={{ ...styles.td, color: "#dc2626", fontWeight: 700 }}>25</td>
-                            <td style={{ ...styles.td, color: "#dc2626" }}>10.5%</td>
-                            <td style={{ ...styles.td, color: "#6366f1", fontWeight: 700 }}>66</td>
-                        </tr>
-                    </tbody>
-                </table>
-                <div style={styles.legend}>
-                    <span><span style={{ color: "#16a34a", fontWeight: 600 }}>Confirmed</span> — reservation attended or upcoming, attributed directly to ad click</span>
-                    <span><span style={{ color: "#6366f1", fontWeight: 600 }}>Assisted</span> — booking within 7-day post-click window (view-through)</span>
-                    <span><span style={{ color: "#dc2626", fontWeight: 600 }}>Cancel. rate</span> — vs total confirmed reservations per channel</span>
-                </div>
-            </div>
-
-            {/* ── Per-Channel Cards ── */}
+            {/* ── Individual Channel Summary ── */}
             <div style={styles.channelCardsRow}>
-                {channelCards.map((card) => (
-                    <div key={card.name} style={{ ...styles.channelCard, borderTopColor: card.color }}>
+                {channel_performance.filter(c => c.spend > 0).map((channel) => (
+                    <div key={channel.channel} style={{ ...styles.channelCard, borderTopColor: getChannelColor(channel.channel) }}>
                         <div style={styles.channelCardHeader}>
-                            <span style={{ ...styles.channelDot, background: card.dotColor }} />
-                            <span style={styles.channelCardLabel}>{card.name}</span>
+                            <span style={{ ...styles.channelDot, background: getChannelColor(channel.channel) }} />
+                            <span style={styles.channelCardLabel}>{channel.channel.toUpperCase()}</span>
                         </div>
-                        <div style={styles.channelSpend}>{card.spend}</div>
-                        <div style={styles.channelSubLabel}>Spend this week</div>
+                        <div style={styles.channelSpend}>{fmtEur(channel.spend)}</div>
+                        <div style={styles.channelSubLabel}>Spend this {activeRange}</div>
                         <div style={styles.metricsGrid}>
-                            {card.metrics.map((m) => (
+                            {[
+                                { label: "IMPRESSIONS", value: fmtNum(channel.impressions) },
+                                { label: "CLICKS", value: fmtNum(channel.clicks) },
+                                { label: "CTR", value: channel.ctr, green: true },
+                                { label: "CPC", value: `€${channel.cpc.toFixed(2)}` },
+                                { label: "CONVERSIONS", value: channel.conv, green: true },
+                                { label: "CPA", value: `€${channel.cpa.toFixed(1)}`, green: true },
+                            ].map((m) => (
                                 <div key={m.label} style={styles.metricCell}>
                                     <div style={styles.metricLabel}>{m.label}</div>
-                                    <div style={{
-                                        ...styles.metricValue,
-                                        color: m.highlight === "green" ? "#16a34a" : m.highlight === "amber" ? "#d97706" : "#111827",
-                                    }}>{m.value}</div>
+                                    <div style={{ ...styles.metricValue, color: m.green ? "#16a34a" : "#111827" }}>{m.value}</div>
                                 </div>
                             ))}
                         </div>
-                        <BarChart bars={card.bars} color={card.barColor} maxBar={card.maxBar} yLabels={card.yLabels} />
-                        <div style={styles.dayLabels}>
-                            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(d => (
-                                <span key={d} style={styles.dayLabel}>{d}</span>
-                            ))}
-                        </div>
+                    </div>
+                ))}
+                {channel_performance.filter(c => c.spend === 0).map(c => (
+                    <div key={c.channel} style={{ ...styles.channelCard, opacity: 0.6, background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <p style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8' }}>{c.channel} - No activity this period</p>
                     </div>
                 ))}
             </div>
@@ -448,209 +226,40 @@ export default function AdDashboard() {
 
 const styles: Record<string, React.CSSProperties> = {
     root: {
-        fontFamily: "'DM Sans', 'Helvetica Neue', sans-serif",
-        background: "#f3f4f6",
+        fontFamily: "'Inter', sans-serif",
+        background: "#f8fafc",
         minHeight: "100vh",
         padding: "24px",
         display: "flex",
         flexDirection: "column",
         gap: 20,
-        color: "#111827",
     },
-    kpiRow: {
-        display: "grid",
-        gridTemplateColumns: "repeat(5, 1fr)",
-        gap: 16,
-    },
-    kpiCard: {
-        background: "#fff",
-        borderRadius: 12,
-        padding: "16px 18px 8px",
-        boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-    },
-    kpiLabel: {
-        fontSize: 9,
-        fontWeight: 600,
-        letterSpacing: "0.08em",
-        color: "#6b7280",
-        textTransform: "uppercase",
-        marginBottom: 4,
-    },
-    kpiValue: {
-        fontSize: 30,
-        fontWeight: 300,
-        letterSpacing: "-0.02em",
-        lineHeight: 1.1,
-        marginBottom: 4,
-    },
-    badge: {
-        fontSize: 11,
-        fontWeight: 600,
-        marginBottom: 2,
-    },
-    kpiSub: {
-        fontSize: 10,
-        color: "#9ca3af",
-        marginBottom: 4,
-    },
-    card: {
-        background: "#fff",
-        borderRadius: 12,
-        padding: "18px 20px",
-        boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-    },
-    tableHeader: {
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "flex-start",
-        marginBottom: 14,
-    },
-    sectionTitle: {
-        fontSize: 10,
-        fontWeight: 700,
-        letterSpacing: "0.1em",
-        color: "#374151",
-        textTransform: "uppercase",
-    },
-    sectionSubRight: {
-        fontSize: 9,
-        color: "#9ca3af",
-        letterSpacing: "0.06em",
-        textTransform: "uppercase",
-    },
-    tableMeta: {
-        fontSize: 10,
-        color: "#9ca3af",
-        marginTop: 2,
-    },
-    table: {
-        width: "100%",
-        borderCollapse: "collapse",
-        fontSize: 13,
-    },
-    thead: {
-        borderBottom: "1px solid #e5e7eb",
-    },
-    th: {
-        textAlign: "left" as const,
-        fontSize: 9,
-        fontWeight: 600,
-        letterSpacing: "0.08em",
-        color: "#9ca3af",
-        textTransform: "uppercase" as const,
-        paddingBottom: 8,
-        paddingRight: 12,
-        whiteSpace: "nowrap" as const,
-    },
-    tr: {
-        borderBottom: "1px solid #f3f4f6",
-    },
-    td: {
-        padding: "10px 12px 10px 0",
-        fontSize: 13,
-        color: "#374151",
-        whiteSpace: "nowrap" as const,
-        verticalAlign: "middle" as const,
-    },
-    dot: {
-        display: "inline-block",
-        width: 8,
-        height: 8,
-        borderRadius: "50%",
-        marginRight: 8,
-        flexShrink: 0,
-    },
-    ctrBadge: {
-        background: "#dcfce7",
-        color: "#16a34a",
-        fontWeight: 600,
-        padding: "2px 7px",
-        borderRadius: 20,
-        fontSize: 12,
-    },
-    legend: {
-        display: "flex",
-        gap: 20,
-        marginTop: 12,
-        flexWrap: "wrap" as const,
-        fontSize: 10,
-        color: "#6b7280",
-    },
-    channelCardsRow: {
-        display: "grid",
-        gridTemplateColumns: "repeat(3, 1fr)",
-        gap: 16,
-    },
-    channelCard: {
-        background: "#fff",
-        borderRadius: 12,
-        padding: "16px 18px 12px",
-        boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-        borderTop: "3px solid transparent",
-    },
-    channelCardHeader: {
-        display: "flex",
-        alignItems: "center",
-        marginBottom: 10,
-    },
-    channelDot: {
-        width: 8,
-        height: 8,
-        borderRadius: "50%",
-        display: "inline-block",
-        marginRight: 8,
-    },
-    channelCardLabel: {
-        fontSize: 9,
-        fontWeight: 700,
-        letterSpacing: "0.1em",
-        color: "#6b7280",
-        textTransform: "uppercase" as const,
-    },
-    channelSpend: {
-        fontSize: 32,
-        fontWeight: 300,
-        letterSpacing: "-0.02em",
-        lineHeight: 1.1,
-    },
-    channelSubLabel: {
-        fontSize: 10,
-        color: "#9ca3af",
-        marginBottom: 14,
-    },
-    metricsGrid: {
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: "8px 12px",
-        marginBottom: 14,
-    },
-    metricCell: {
-        background: "#f9fafb",
-        borderRadius: 8,
-        padding: "8px 10px",
-    },
-    metricLabel: {
-        fontSize: 8,
-        fontWeight: 600,
-        letterSpacing: "0.08em",
-        color: "#9ca3af",
-        textTransform: "uppercase" as const,
-        marginBottom: 3,
-    },
-    metricValue: {
-        fontSize: 16,
-        fontWeight: 600,
-    },
-    dayLabels: {
-        display: "flex",
-        justifyContent: "space-around",
-        paddingLeft: 30,
-        marginTop: 4,
-    },
-    dayLabel: {
-        fontSize: 9,
-        color: "#9ca3af",
-        flex: 1,
-        textAlign: "center" as const,
-    },
+    kpiRow: { display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16 },
+    kpiCard: { background: "#fff", borderRadius: 12, padding: "18px 20px 10px", boxShadow: "0 1px 3px rgba(0,0,0,0.02)", border: '1px solid #f1f5f9' },
+    kpiLabel: { fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", color: "#94a3b8", textTransform: "uppercase", marginBottom: 6 },
+    kpiValue: { fontSize: 30, fontWeight: 600, color: "#0f172a", letterSpacing: "-0.5px", lineHeight: 1.1, marginBottom: 4 },
+    badge: { display: "inline-flex", alignItems: "center", borderRadius: 4, padding: "2px 6px", fontSize: 10, fontWeight: 700, marginBottom: 4 },
+    kpiSub: { fontSize: 10, color: "#94a3b8", marginBottom: 4, fontWeight: 500 },
+    card: { background: "#fff", borderRadius: 16, padding: "24px", boxShadow: "0 1px 3px rgba(0,0,0,0.02)", border: '1px solid #f1f5f9' },
+    tableHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
+    sectionTitle: { fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", color: "#94a3b8", textTransform: "uppercase" },
+    sectionSubRight: { fontSize: 9, color: "#cbd5e1", letterSpacing: "0.06em", textTransform: "uppercase", fontWeight: 800 },
+    table: { width: "100%", borderCollapse: "collapse" },
+    thead: { borderBottom: "1.5px solid #f1f5f9" },
+    th: { textAlign: "left", fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", paddingBottom: 10 },
+    tr: { borderBottom: "1px solid #f8fafc" },
+    td: { padding: "12px 0", fontSize: 13, color: "#1e293b", fontWeight: 500 },
+    dot: { display: "inline-block", width: 8, height: 8, borderRadius: "50%", marginRight: 8 },
+    ctrBadge: { background: "#dcfce7", color: "#16a34a", fontWeight: 700, padding: "2px 8px", borderRadius: 20, fontSize: 11 },
+    channelCardsRow: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 },
+    channelCard: { background: "#fff", borderRadius: 16, padding: "24px", boxShadow: "0 1px 3px rgba(0,0,0,0.02)", borderTop: "4px solid transparent", border: '1px solid #f1f5f9' },
+    channelCardHeader: { display: "flex", alignItems: "center", marginBottom: 12 },
+    channelDot: { width: 8, height: 8, borderRadius: "50%", marginRight: 8 },
+    channelCardLabel: { fontSize: 10, fontWeight: 800, color: "#94a3b8" },
+    channelSpend: { fontSize: 32, fontWeight: 600, color: "#0f172a", letterSpacing: "-0.5px" },
+    channelSubLabel: { fontSize: 11, color: "#94a3b8", marginBottom: 16, fontWeight: 500 },
+    metricsGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" },
+    metricCell: { background: "#f8fafc", borderRadius: 12, padding: "10px" },
+    metricLabel: { fontSize: 8, fontWeight: 800, color: "#94a3b8", marginBottom: 4 },
+    metricValue: { fontSize: 15, fontWeight: 700 },
 };

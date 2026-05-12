@@ -1,16 +1,39 @@
 "use client";
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { metricsService } from "@/lib/services";
 
 const Login: React.FC = () => {
+    const router = useRouter();
     const [showPassword, setShowPassword] = useState(false);
     const [remember, setRemember] = useState(true);
     const [loading, setLoading] = useState(false);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [error, setError] = useState<string | null>(null);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // Integration goes here
+        setError(null);
+        setLoading(true);
+
+        try {
+            const response = await metricsService.login({ email, password });
+            
+            // Store tokens
+            localStorage.setItem('access_token', response.access);
+            localStorage.setItem('refresh_token', response.refresh);
+            localStorage.setItem('user', JSON.stringify(response.user));
+
+            // Redirect to dashboard
+            router.push('/admin-dashboard');
+        } catch (err: any) {
+            console.error('Login failed:', err);
+            const message = err.response?.data?.detail || err.response?.data?.message || 'Invalid email or password';
+            setError(message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -38,6 +61,12 @@ const Login: React.FC = () => {
                 <p className="text-center text-[#555555] text-[15px] mb-7">
                     Please enter your email and password to continue
                 </p>
+
+                {error && (
+                    <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg text-center font-medium">
+                        {error}
+                    </div>
+                )}
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} noValidate>

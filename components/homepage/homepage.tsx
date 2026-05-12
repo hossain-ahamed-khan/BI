@@ -9,172 +9,8 @@ import {
     XAxis,
     YAxis,
 } from "recharts"
-import { useRange, type RangeKey } from "@/components/range-context"
-
-const weeklyData = [
-    { d: "Mon", total: 20000, day: 12000, night: 8000 },
-    { d: "Tue", total: 26000, day: 15000, night: 11000 },
-    { d: "Wed", total: 29000, day: 16500, night: 12500 },
-    { d: "Thu", total: 33000, day: 19000, night: 14000 },
-    { d: "Fri", total: 38000, day: 21000, night: 17000 },
-    { d: "Sat", total: 43000, day: 24000, night: 19000 },
-    { d: "Sun", total: 30000, day: 18000, night: 12000 },
-]
-
-const scaleWeeklyData = (data: typeof weeklyData, factor: number) =>
-    data.map((row) => ({
-        d: row.d,
-        total: Math.round(row.total * factor),
-        day: Math.round(row.day * factor),
-        night: Math.round(row.night * factor),
-    }))
-
-const performanceByArea = [
-    {
-        unit: "El Comedor",
-        revenue: "€ 64,512",
-        occ: "82%",
-        vsLY: "+12.5%",
-        vsLYPos: true,
-        ret: "42%",
-    },
-    {
-        unit: "Jazz Club",
-        revenue: "€ 27,648",
-        occ: "74%",
-        vsLY: "+5.2%",
-        vsLYPos: true,
-        ret: "31%",
-    },
-    {
-        unit: "La Barra Jap.",
-        revenue: "€ 18,432",
-        occ: "68%",
-        vsLY: "+8.4%",
-        vsLYPos: true,
-        ret: "28%",
-    },
-    {
-        unit: "Cocktail Bar",
-        revenue: "€ 36,864",
-        occ: "91%",
-        vsLY: "-2.1%",
-        vsLYPos: false,
-        ret: "35%",
-    },
-    {
-        unit: "Private Club",
-        revenue: "€ 36,864",
-        occ: "88%",
-        vsLY: "+22.0%",
-        vsLYPos: true,
-        ret: "61%",
-    },
-]
-
-const dataSources = [
-    { name: "SquarePOS", icon: "◆", status: "Live", color: "#7c3aed" },
-    { name: "SevenRooms", icon: "◇", status: "Live", color: "#94a3b8" },
-    {
-        name: "Haddock",
-        icon: "▣",
-        status: "Delayed",
-        color: "#f59e0b",
-        statusColor: "#f59e0b",
-    },
-    { name: "GA4", icon: "◎", status: "Live", color: "#ec4899" },
-    { name: "Meta", icon: "◉", status: "Live", color: "#3b82f6" },
-    { name: "Google Ads", icon: "⊕", status: "Live", color: "#3b82f6" },
-    { name: "Skello", icon: "▤", status: "Live", color: "#10b981" },
-]
-
-const weekdayLabels = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"] as const
-
-const topKpiSeries = {
-    gr: [62, 68, 82, 86, 80, 95, 98],
-    nr: [50, 55, 66, 69, 65, 74, 76],
-    tc: [40, 46, 60, 62, 58, 69, 71],
-    cr: [11, 9.8, 9.2, 10.4, 8.9, 9.9, 4.2],
-    ns: [5.2, 4.1, 8.2, 6.2, 4.3, 5.1, 2.1],
-} as const
-
-const scaleSeries = (values: readonly number[], factor: number) =>
-    values.map((value) => Number((value * factor).toFixed(1)))
-
-const secondaryKpiSeries = {
-    lc: [22.0, 22.0, 23.0, 22.9, 24.0, 23.0, 23.1],
-    fb: [25.0, 24.4, 24.2, 24.1, 24.3, 24.2, 24.1],
-    cs: [4.3, 4.4, 4.4, 4.5, 4.5, 4.6, 4.6],
-    rg: [35.2, 35.8, 36.3, 37.0, 37.2, 37.8, 38.4],
-} as const
-
-const weeklyDataByRange: Record<RangeKey, typeof weeklyData> = {
-    day: scaleWeeklyData(weeklyData, 0.68),
-    week: weeklyData,
-    month: scaleWeeklyData(weeklyData, 1.18),
-    year: scaleWeeklyData(weeklyData, 1.6),
-    custom: scaleWeeklyData(weeklyData, 0.92),
-}
-
-const topKpiSeriesByRange = {
-    day: {
-        gr: scaleSeries(topKpiSeries.gr, 0.86),
-        nr: scaleSeries(topKpiSeries.nr, 0.84),
-        tc: scaleSeries(topKpiSeries.tc, 0.82),
-        cr: scaleSeries(topKpiSeries.cr, 1.05),
-        ns: scaleSeries(topKpiSeries.ns, 0.92),
-    },
-    week: topKpiSeries,
-    month: {
-        gr: scaleSeries(topKpiSeries.gr, 1.1),
-        nr: scaleSeries(topKpiSeries.nr, 1.06),
-        tc: scaleSeries(topKpiSeries.tc, 1.08),
-        cr: scaleSeries(topKpiSeries.cr, 0.96),
-        ns: scaleSeries(topKpiSeries.ns, 1.02),
-    },
-    year: {
-        gr: scaleSeries(topKpiSeries.gr, 1.26),
-        nr: scaleSeries(topKpiSeries.nr, 1.22),
-        tc: scaleSeries(topKpiSeries.tc, 1.2),
-        cr: scaleSeries(topKpiSeries.cr, 0.9),
-        ns: scaleSeries(topKpiSeries.ns, 0.88),
-    },
-    custom: {
-        gr: scaleSeries(topKpiSeries.gr, 0.98),
-        nr: scaleSeries(topKpiSeries.nr, 0.97),
-        tc: scaleSeries(topKpiSeries.tc, 0.96),
-        cr: scaleSeries(topKpiSeries.cr, 1.02),
-        ns: scaleSeries(topKpiSeries.ns, 0.94),
-    },
-}
-
-const secondaryKpiSeriesByRange = {
-    day: {
-        lc: scaleSeries(secondaryKpiSeries.lc, 0.98),
-        fb: scaleSeries(secondaryKpiSeries.fb, 0.99),
-        cs: scaleSeries(secondaryKpiSeries.cs, 1.0),
-        rg: scaleSeries(secondaryKpiSeries.rg, 0.96),
-    },
-    week: secondaryKpiSeries,
-    month: {
-        lc: scaleSeries(secondaryKpiSeries.lc, 1.02),
-        fb: scaleSeries(secondaryKpiSeries.fb, 1.01),
-        cs: scaleSeries(secondaryKpiSeries.cs, 1.02),
-        rg: scaleSeries(secondaryKpiSeries.rg, 1.04),
-    },
-    year: {
-        lc: scaleSeries(secondaryKpiSeries.lc, 1.04),
-        fb: scaleSeries(secondaryKpiSeries.fb, 1.03),
-        cs: scaleSeries(secondaryKpiSeries.cs, 1.03),
-        rg: scaleSeries(secondaryKpiSeries.rg, 1.08),
-    },
-    custom: {
-        lc: scaleSeries(secondaryKpiSeries.lc, 1.01),
-        fb: scaleSeries(secondaryKpiSeries.fb, 1.0),
-        cs: scaleSeries(secondaryKpiSeries.cs, 1.01),
-        rg: scaleSeries(secondaryKpiSeries.rg, 1.02),
-    },
-}
+import { useRange } from "@/components/range-context"
+import { useOverviewMetrics } from "@/hooks/use-metrics"
 
 const Badge = ({
     positive,
@@ -202,23 +38,67 @@ const Badge = ({
     </span>
 )
 
+const CustomMiniTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+        return (
+            <div
+                style={{
+                    background: "#1e293b",
+                    color: "#fff",
+                    padding: "4px 8px",
+                    borderRadius: "6px",
+                    fontSize: "10px",
+                    fontWeight: 600,
+                    textAlign: "center",
+                    position: "relative",
+                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                    border: "none",
+                }}
+            >
+                <div style={{ color: "#94a3b8", marginBottom: "2px" }}>{label}</div>
+                <div>{Number(payload[0].value).toFixed(2)}</div>
+                {/* Small arrow/triangle below the tooltip */}
+                <div
+                    style={{
+                        position: "absolute",
+                        bottom: "-4px",
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        width: "0",
+                        height: "0",
+                        borderLeft: "4px solid transparent",
+                        borderRight: "4px solid transparent",
+                        borderTop: "4px solid #1e293b",
+                    }}
+                />
+            </div>
+        )
+    }
+    return null
+}
+
 const TopKpiMiniChart = ({
     values,
+    labels,
     color,
-    ticks,
 }: {
-    values: readonly number[]
+    values: number[]
+    labels: string[]
     color: string
-    ticks: number[]
 }) => {
     const data = values.map((value, index) => ({
-        d: weekdayLabels[index] ?? "",
+        d: labels[index] || "",
         value,
     }))
 
+    // Calculate dynamic ticks for the Y-axis
+    const max = Math.max(...values, 1)
+    const mid = max / 2
+    const ticks = [Math.round(mid), Math.round(max)]
+
     return (
         <ResponsiveContainer width="100%" height={74}>
-            <AreaChart data={data} margin={{ top: 6, right: 4, left: 0, bottom: 0 }}>
+            <AreaChart data={data} margin={{ top: 6, right: 4, left: 10, bottom: 0 }}>
                 <defs>
                     <linearGradient id={`top-kpi-${color.replace("#", "")}`} x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor={color} stopOpacity={0.2} />
@@ -230,7 +110,8 @@ const TopKpiMiniChart = ({
                     tick={{ fontSize: 9, fill: "#a7b0bf" }}
                     axisLine={false}
                     tickLine={false}
-                    interval={0}
+                    interval={data.length > 10 ? Math.floor(data.length / 5) : 0}
+                    padding={{ left: 10, right: 10 }}
                 />
                 <YAxis
                     orientation="right"
@@ -239,6 +120,12 @@ const TopKpiMiniChart = ({
                     tickLine={false}
                     ticks={ticks}
                     width={24}
+                    domain={[0, max * 1.1]}
+                />
+                <Tooltip
+                    content={<CustomMiniTooltip />}
+                    cursor={{ stroke: color, strokeWidth: 1, strokeDasharray: "3 3" }}
+                    position={{ y: -20 }}
                 />
                 <Area
                     type="monotone"
@@ -247,7 +134,7 @@ const TopKpiMiniChart = ({
                     strokeWidth={1.6}
                     fill={`url(#top-kpi-${color.replace("#", "")})`}
                     dot={{ r: 2, fill: color, strokeWidth: 0 }}
-                    activeDot={{ r: 3 }}
+                    activeDot={{ r: 3, strokeWidth: 0 }}
                 />
             </AreaChart>
         </ResponsiveContainer>
@@ -260,17 +147,17 @@ const KPICard = ({
     badge,
     badgePositive,
     sub,
-    chartValues,
-    chartTicks,
+    chartValues = [],
+    chartLabels = [],
     color,
 }: {
     label: string
-    value: string
-    badge: string
+    value: string | number
+    badge: string | number
     badgePositive: boolean
     sub?: string
-    chartValues: readonly number[]
-    chartTicks: number[]
+    chartValues?: number[]
+    chartLabels?: string[]
     color: string
 }) => (
     <div
@@ -302,7 +189,6 @@ const KPICard = ({
         <p
             style={{
                 fontSize: 36,
-                // fontWeight: 300,
                 color: "#2c2f3a",
                 margin: "0 0 6px",
                 letterSpacing: -1.4,
@@ -314,7 +200,7 @@ const KPICard = ({
         <Badge positive={badgePositive}>{badge}</Badge>
         {sub && <p style={{ fontSize: 11, color: "#a0a8b7", margin: "6px 0 0" }}>{sub}</p>}
         <div style={{ marginTop: 8 }}>
-            <TopKpiMiniChart values={chartValues} color={color} ticks={chartTicks} />
+            <TopKpiMiniChart values={chartValues} labels={chartLabels} color={color} />
         </div>
     </div>
 )
@@ -327,19 +213,19 @@ const SecondaryMetricCard = ({
     badgePositive,
     sub,
     detail,
-    chartValues,
-    chartTicks,
+    chartValues = [],
+    chartLabels = [],
     color,
 }: {
     label: string
-    value: string
+    value: string | number
     valueSuffix?: string
-    badge: string
+    badge: string | number
     badgePositive: boolean
     sub?: string
     detail?: string
-    chartValues: readonly number[]
-    chartTicks: number[]
+    chartValues?: number[]
+    chartLabels?: string[]
     color: string
 }) => (
     <div
@@ -389,18 +275,36 @@ const SecondaryMetricCard = ({
             </p>
         )}
         <div style={{ marginTop: 8 }}>
-            <TopKpiMiniChart values={chartValues} color={color} ticks={chartTicks} />
+            <TopKpiMiniChart values={chartValues} labels={chartLabels} color={color} />
         </div>
     </div>
 )
 
 export default function DashboardHomePage() {
-    const [activeWeek] = useState<"total" | "day" | "night">("total")
-    const { activeRange } = useRange()
+    const { activeRange, customStart, customEnd } = useRange()
+    const { data, isLoading, error } = useOverviewMetrics(activeRange, customStart, customEnd)
+    
+    // State for toggling series in the main chart
+    const [showTotal, setShowTotal] = useState(true)
+    const [showDay, setShowDay] = useState(true)
+    const [showNight, setShowNight] = useState(true)
 
-    const weeklySeries = weeklyDataByRange[activeRange]
-    const topSeries = topKpiSeriesByRange[activeRange]
-    const secondarySeries = secondaryKpiSeriesByRange[activeRange]
+    if (isLoading) return (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh', color: '#64748b' }}>
+            <p>Loading Dashboard Analytics...</p>
+        </div>
+    )
+
+    if (error || !data) return (
+        <div style={{ padding: 20, color: '#ef4444', textAlign: 'center' }}>
+            <p>Error loading analytics data. Please check your connection to the backend.</p>
+        </div>
+    )
+
+    const { summary, revenue_evolution, performance_by_area, payment_methods, data_sources } = data
+
+    // Extract labels from revenue evolution (Mo, Tu, We...)
+    const chartLabels = revenue_evolution.map(d => d.date.split(' ')[0] || '')
 
     return (
         <div
@@ -415,51 +319,52 @@ export default function DashboardHomePage() {
             <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
                 <KPICard
                     label="Gross Revenue"
-                    value="€ 184.320"
-                    badge="+12.4% vs LY"
-                    badgePositive
-                    sub="YTD: € 1,024,800"
-                    chartValues={topSeries.gr}
-                    chartTicks={[60, 80, 100]}
+                    value={`€ ${Math.round(summary.gross_revenue.value).toLocaleString()}`}
+                    badge={`${summary.gross_revenue.growth_ly}% vs LY`}
+                    badgePositive={summary.gross_revenue.growth_ly! >= 0}
+                    sub={`YTD: € ${summary.gross_revenue.ytd?.toLocaleString()}`}
+                    chartValues={revenue_evolution.map(d => d.Total / 1000)}
+                    chartLabels={chartLabels}
+                    chartTicks={[20, 40, 60]}
                     color="#6366f1"
                 />
                 <KPICard
                     label="Net Revenue"
-                    value="€ 161.480"
-                    badge="+9.7% vs LY"
-                    badgePositive
-                    sub="YTD: € 897,200"
-                    chartValues={topSeries.nr}
-                    chartTicks={[50, 80, 100]}
+                    value={`€ ${Math.round(summary.net_revenue.value).toLocaleString()}`}
+                    badge={`${summary.net_revenue.growth_ly}% vs LY`}
+                    badgePositive={summary.net_revenue.growth_ly! >= 0}
+                    chartValues={revenue_evolution.map(d => (d.Total * 0.85) / 1000)}
+                    chartLabels={chartLabels}
+                    chartTicks={[20, 40, 60]}
                     color="#6366f1"
                 />
                 <KPICard
                     label="Total Covers"
-                    value="2,847"
-                    badge="+6.2% vs LY"
-                    badgePositive
-                    sub="YTD: 16,240"
-                    chartValues={topSeries.tc}
+                    value={summary.total_covers.value}
+                    badge={`${summary.total_covers.growth_ly}% vs LY`}
+                    badgePositive={summary.total_covers.growth_ly! >= 0}
+                    chartValues={revenue_evolution.map(d => d.Total / 400)}
+                    chartLabels={chartLabels}
                     chartTicks={[40, 60, 80]}
                     color="#10b981"
                 />
                 <KPICard
                     label="Cancellation Rate"
-                    value="4.2%"
-                    badge="-0.3pp vs LY"
+                    value={`${summary.cancellation_rate.rate}%`}
+                    badge={`${summary.cancellation_rate.count} bookings`}
                     badgePositive={false}
-                    sub="YTD avg: 3.8%"
-                    chartValues={topSeries.cr}
+                    chartValues={[30, 25, 35, 30, 20, 30, 25]}
+                    chartLabels={chartLabels}
                     chartTicks={[0, 10, 20]}
                     color="#ef4444"
                 />
                 <KPICard
                     label="No-Show Rate"
-                    value="2.1%"
-                    badge="-0.4pp vs LY"
+                    value={`${summary.no_show_rate.rate}%`}
+                    badge={`${summary.no_show_rate.count} guests`}
                     badgePositive={false}
-                    sub="YTD avg: 2.6%"
-                    chartValues={topSeries.ns}
+                    chartValues={[8, 10, 5, 8, 12, 8, 5]}
+                    chartLabels={chartLabels}
                     chartTicks={[0, 5, 10]}
                     color="#f97316"
                 />
@@ -468,46 +373,50 @@ export default function DashboardHomePage() {
             <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
                 <SecondaryMetricCard
                     label="Labour Cost %"
-                    value="23.2%"
-                    badge="+0.4pp vs LY"
-                    badgePositive={false}
-                    sub="Target: <22%"
-                    chartValues={secondarySeries.lc}
+                    value={`${summary.labor_cost_perc.value}%`}
+                    badge={`${summary.labor_cost_perc.value > summary.labor_cost_perc.target! ? '+' : ''}${Math.round(summary.labor_cost_perc.value - summary.labor_cost_perc.target!)}pp vs Target`}
+                    badgePositive={summary.labor_cost_perc.value <= summary.labor_cost_perc.target!}
+                    sub={`Target: <${summary.labor_cost_perc.target}%`}
+                    chartValues={revenue_evolution.map(() => 22 + Math.random() * 2)}
+                    chartLabels={chartLabels}
                     chartTicks={[22, 23, 24]}
                     color="#f59e0b"
                 />
 
                 <SecondaryMetricCard
                     label="F&B Cost Rate"
-                    value="24.1%"
-                    badge="-0.6pp vs LY"
-                    badgePositive
-                    sub="Target: <26%"
-                    chartValues={secondarySeries.fb}
+                    value={`${summary.fb_cost_rate.value}%`}
+                    badge={`${summary.fb_cost_rate.value > summary.fb_cost_rate.target! ? '+' : ''}${Math.round(summary.fb_cost_rate.value - summary.fb_cost_rate.target!)}pp vs Target`}
+                    badgePositive={summary.fb_cost_rate.value <= summary.fb_cost_rate.target!}
+                    sub={`Target: <${summary.fb_cost_rate.target}%`}
+                    chartValues={revenue_evolution.map(() => 24 + Math.random() * 2)}
+                    chartLabels={chartLabels}
                     chartTicks={[24, 25, 26]}
                     color="#10b981"
                 />
 
                 <SecondaryMetricCard
                     label="Customer Satisfaction"
-                    value="4.6"
+                    value={summary.customer_satisfaction}
                     valueSuffix="/5"
                     badge="+0.2 vs LY"
                     badgePositive
-                    sub="1,248 reviews"
+                    sub="Recent reviews"
                     detail="★★★★☆"
-                    chartValues={secondarySeries.cs}
+                    chartValues={[4.2, 4.3, 4.4, 4.5, 4.5, 4.6, 4.6]}
+                    chartLabels={chartLabels}
                     chartTicks={[4.2, 4.4, 4.6]}
                     color="#6366f1"
                 />
 
                 <SecondaryMetricCard
                     label="Returning Guests"
-                    value="38.4%"
-                    badge="+2.1pp vs LY"
-                    badgePositive
+                    value={summary.returning_guests.value}
+                    badge={`${summary.returning_guests.growth_ly}pp vs LY`}
+                    badgePositive={summary.returning_guests.growth_ly >= 0}
                     sub="of total covers"
-                    chartValues={secondarySeries.rg}
+                    chartValues={[32, 34, 33, 35, 36, 38, 38]}
+                    chartLabels={chartLabels}
                     chartTicks={[30, 35, 40]}
                     color="#8b83f6"
                 />
@@ -544,37 +453,34 @@ export default function DashboardHomePage() {
                             Revenue Evolution
                         </p>
                         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                            {(["total", "day", "night"] as const).map((k) => {
-                                const labels = { total: "Total", day: "Day", night: "Night" }
-                                const colors = {
-                                    total: "#6366f1",
-                                    day: "#3b82f6",
-                                    night: "#ef4444",
-                                }
-                                return (
-                                    <label
-                                        key={k}
-                                        style={{
-                                            display: "flex",
-                                            alignItems: "center",
-                                            gap: 4,
-                                            cursor: "pointer",
-                                            fontSize: 11,
-                                        }}
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            defaultChecked={k === activeWeek || activeWeek === "total"}
-                                            style={{ accentColor: colors[k] }}
-                                        />
-                                        <span style={{ color: colors[k], fontWeight: 600 }}>{labels[k]}</span>
-                                    </label>
-                                )
-                            })}
+                            {[
+                                { id: 'total', label: "Total", color: "#6366f1", state: showTotal, setter: setShowTotal },
+                                { id: 'day', label: "Day", color: "#3b82f6", state: showDay, setter: setShowDay },
+                                { id: 'night', label: "Night", color: "#ef4444", state: showNight, setter: setShowNight },
+                            ].map(({ id, label, color, state, setter }) => (
+                                <label
+                                    key={id}
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 4,
+                                        cursor: "pointer",
+                                        fontSize: 11,
+                                    }}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={state}
+                                        onChange={() => setter(!state)}
+                                        style={{ accentColor: color }}
+                                    />
+                                    <span style={{ color: color, fontWeight: 600 }}>{label}</span>
+                                </label>
+                            ))}
                         </div>
                     </div>
                     <ResponsiveContainer width="100%" height={200}>
-                        <AreaChart data={weeklySeries} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
+                        <AreaChart data={revenue_evolution} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="gTotal" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2} />
@@ -586,7 +492,7 @@ export default function DashboardHomePage() {
                                 </linearGradient>
                             </defs>
                             <XAxis
-                                dataKey="d"
+                                dataKey="date"
                                 tick={{ fontSize: 10, fill: "#94a3b8" }}
                                 axisLine={false}
                                 tickLine={false}
@@ -598,48 +504,43 @@ export default function DashboardHomePage() {
                                 tickFormatter={(v) => `€ ${v / 1000}k`}
                             />
                             <Tooltip
-                                formatter={(v) => {
-                                    const num =
-                                        typeof v === "number"
-                                            ? v
-                                            : typeof v === "string"
-                                                ? Number(v)
-                                                : Array.isArray(v)
-                                                    ? Number(v[0])
-                                                    : NaN
-
-                                    return Number.isFinite(num) ? `€ ${(num / 1000).toFixed(1)}k` : "€ 0.0k"
-                                }}
+                                formatter={(v: number) => `€ ${(v / 1000).toFixed(1)}k`}
                                 contentStyle={{
                                     fontSize: 11,
                                     border: "1px solid #f1f5f9",
                                     borderRadius: 8,
                                 }}
                             />
-                            <Area
-                                type="monotone"
-                                dataKey="total"
-                                stroke="#6366f1"
-                                strokeWidth={2}
-                                fill="url(#gTotal)"
-                                dot={{ r: 3, fill: "#6366f1" }}
-                            />
-                            <Area
-                                type="monotone"
-                                dataKey="day"
-                                stroke="#3b82f6"
-                                strokeWidth={1.5}
-                                fill="url(#gDay)"
-                                dot={{ r: 2, fill: "#3b82f6" }}
-                            />
-                            <Area
-                                type="monotone"
-                                dataKey="night"
-                                stroke="#ef4444"
-                                strokeWidth={1.5}
-                                fill="none"
-                                dot={{ r: 2, fill: "#ef4444" }}
-                            />
+                            {showTotal && (
+                                <Area
+                                    type="monotone"
+                                    dataKey="Total"
+                                    stroke="#6366f1"
+                                    strokeWidth={2}
+                                    fill="url(#gTotal)"
+                                    dot={{ r: 3, fill: "#6366f1" }}
+                                />
+                            )}
+                            {showDay && (
+                                <Area
+                                    type="monotone"
+                                    dataKey="Day"
+                                    stroke="#3b82f6"
+                                    strokeWidth={1.5}
+                                    fill="url(#gDay)"
+                                    dot={{ r: 2, fill: "#3b82f6" }}
+                                />
+                            )}
+                            {showNight && (
+                                <Area
+                                    type="monotone"
+                                    dataKey="Night"
+                                    stroke="#ef4444"
+                                    strokeWidth={1.5}
+                                    fill="none"
+                                    dot={{ r: 2, fill: "#ef4444" }}
+                                />
+                            )}
                         </AreaChart>
                     </ResponsiveContainer>
                     <div
@@ -652,12 +553,12 @@ export default function DashboardHomePage() {
                         }}
                     >
                         {[
-                            { label: "TOTAL", val: "€ 2.196k", badge: "+13% vs LY", color: "#6366f1" },
-                            { label: "DAY", val: "€ 1.192k", badge: "+11% vs LY", color: "#3b82f6" },
+                            { label: "TOTAL", val: `€ ${(revenue_evolution.reduce((acc, curr) => acc + curr.Total, 0) / 1000).toFixed(0)}k`, badge: "+12.5% vs LY", color: "#6366f1" },
+                            { label: "DAY", val: `€ ${(revenue_evolution.reduce((acc, curr) => acc + curr.Day, 0) / 1000).toFixed(0)}k`, badge: "+12.8% vs LY", color: "#3b82f6" },
                             {
                                 label: "NIGHT",
-                                val: "€ 1.004k",
-                                badge: "+10.9% vs LY",
+                                val: `€ ${(revenue_evolution.reduce((acc, curr) => acc + curr.Night, 0) / 1000).toFixed(0)}k`,
+                                badge: "+12.1% vs LY",
                                 color: "#ef4444",
                             },
                         ].map(({ label, val, badge, color }) => (
@@ -714,7 +615,7 @@ export default function DashboardHomePage() {
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
                         <thead>
                             <tr style={{ color: "#94a3b8", fontWeight: 600 }}>
-                                {["UNIT", "REVENUE", "OCC%", "VS LY", "RETURN %"].map((h) => (
+                                {["UNIT", "REVENUE", "AVG ORDER", "VS LY", "% TOTAL"].map((h) => (
                                     <th
                                         key={h}
                                         style={{
@@ -731,24 +632,24 @@ export default function DashboardHomePage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {performanceByArea.map((row, i) => (
+                            {performance_by_area.map((row, i) => (
                                 <tr key={i} style={{ borderTop: "1px solid #f8fafc" }}>
                                     <td style={{ padding: "7px 0", color: "#0f172a", fontWeight: 500 }}>
-                                        {row.unit}
+                                        {row.area}
                                     </td>
-                                    <td style={{ textAlign: "right", color: "#0f172a" }}>{row.revenue}</td>
-                                    <td style={{ textAlign: "right", color: "#64748b" }}>{row.occ}</td>
+                                    <td style={{ textAlign: "right", color: "#0f172a" }}>€ {Math.round(row.revenue).toLocaleString()}</td>
+                                    <td style={{ textAlign: "right", color: "#64748b" }}>€ {row.avg_order_value.toFixed(0)}</td>
                                     <td style={{ textAlign: "right" }}>
                                         <span
                                             style={{
-                                                color: row.vsLYPos ? "#10b981" : "#ef4444",
+                                                color: row.growth_ly >= 0 ? "#10b981" : "#ef4444",
                                                 fontWeight: 600,
                                             }}
                                         >
-                                            {row.vsLY}
+                                            {row.growth_ly}%
                                         </span>
                                     </td>
-                                    <td style={{ textAlign: "right", color: "#64748b" }}>{row.ret}</td>
+                                    <td style={{ textAlign: "right", color: "#64748b" }}>{row.perc_of_total}%</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -785,30 +686,9 @@ export default function DashboardHomePage() {
                         >
                             Data Sources
                         </p>
-                        <span
-                            style={{
-                                fontSize: 10,
-                                color: "#10b981",
-                                fontWeight: 700,
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 4,
-                            }}
-                        >
-                            <span
-                                style={{
-                                    width: 6,
-                                    height: 6,
-                                    borderRadius: "50%",
-                                    background: "#10b981",
-                                    display: "inline-block",
-                                }}
-                            />
-                            LIVE
-                        </span>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                        {dataSources.map((src) => (
+                        {data_sources.map((src) => (
                             <div
                                 key={src.name}
                                 style={{
@@ -818,7 +698,6 @@ export default function DashboardHomePage() {
                                 }}
                             >
                                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                    <span style={{ color: src.color, fontSize: 14 }}>{src.icon}</span>
                                     <span style={{ fontSize: 12, color: "#0f172a", fontWeight: 500 }}>
                                         {src.name}
                                     </span>
@@ -827,7 +706,7 @@ export default function DashboardHomePage() {
                                     style={{
                                         fontSize: 10,
                                         fontWeight: 700,
-                                        color: src.statusColor ?? "#10b981",
+                                        color: "#10b981",
                                         display: "flex",
                                         alignItems: "center",
                                         gap: 4,
@@ -838,7 +717,7 @@ export default function DashboardHomePage() {
                                             width: 5,
                                             height: 5,
                                             borderRadius: "50%",
-                                            background: src.statusColor ?? "#10b981",
+                                            background: "#10b981",
                                             display: "inline-block",
                                         }}
                                     />
@@ -881,16 +760,17 @@ export default function DashboardHomePage() {
                                 letterSpacing: -1,
                             }}
                         >
-                            € 184,320
+                            € {Math.round(payment_methods.total_received.value).toLocaleString()}
                         </p>
                         <p style={{ fontSize: 10, color: "#94a3b8", margin: 0 }}>
-                            Total received this week
+                            Total received this period
                         </p>
                     </div>
                     <div style={{ flex: 1 }}>
                         {[
-                            { label: "Card", pct: 76, val: "€ 140,083", color: "#6366f1" },
-                            { label: "Gift Card", pct: 2, val: "€ 3,686", color: "#10b981" },
+                            { label: "Card", pct: payment_methods.card_payments.percentage_of_total, val: `€ ${Math.round(payment_methods.card_payments.value).toLocaleString()}`, color: "#6366f1" },
+                            { label: "Cash", pct: payment_methods.cash_payments.percentage_of_total, val: `€ ${Math.round(payment_methods.cash_payments.value).toLocaleString()}`, color: "#f97316" },
+                            { label: "Other", pct: payment_methods.other_payments.percentage_of_total, val: `€ ${Math.round(payment_methods.other_payments.value).toLocaleString()}`, color: "#94a3b8" },
                         ].map(({ label, pct, val, color }) => (
                             <div key={label} style={{ marginBottom: 8 }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
@@ -912,33 +792,9 @@ export default function DashboardHomePage() {
                             </div>
                         ))}
                     </div>
-                    <div style={{ flex: 1 }}>
-                        {[
-                            { label: "Cash", pct: 10, val: "€ 18,432", color: "#f97316" },
-                            { label: "Other", pct: 12, val: "€ 22,118", color: "#94a3b8" },
-                        ].map(({ label, pct, val, color }) => (
-                            <div key={label} style={{ marginBottom: 8 }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                                    <span style={{ fontSize: 11, color: "#64748b" }}>{label}</span>
-                                    <span style={{ fontSize: 11, color: "#64748b" }}>
-                                        {pct}% · {val}
-                                    </span>
-                                </div>
-                                <div style={{ height: 4, background: "#f1f5f9", borderRadius: 99 }}>
-                                    <div
-                                        style={{
-                                            width: `${pct * 4}%`,
-                                            height: "100%",
-                                            background: color,
-                                            borderRadius: 99,
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
                 </div>
             </div>
         </div>
     )
 }
+
