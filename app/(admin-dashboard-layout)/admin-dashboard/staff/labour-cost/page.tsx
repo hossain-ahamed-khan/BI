@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo } from "react";
+import React, { useMemo, CSSProperties } from "react";
 import {
     Line,
     XAxis,

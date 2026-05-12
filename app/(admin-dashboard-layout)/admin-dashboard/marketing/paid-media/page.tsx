@@ -79,10 +79,10 @@ export default function AdDashboard() {
     const { summary, channel_performance } = data;
 
     const totals = {
-        spend: channel_performance.reduce((s, c) => s + c.spend, 0),
-        impressions: channel_performance.reduce((s, c) => s + c.impressions, 0),
-        clicks: channel_performance.reduce((s, c) => s + c.clicks, 0),
-        conv: channel_performance.reduce((s, c) => s + c.conv, 0),
+        spend: channel_performance.reduce((s: number, c: PaidMediaChannel) => s + c.spend, 0),
+        impressions: channel_performance.reduce((s: number, c: PaidMediaChannel) => s + c.impressions, 0),
+        clicks: channel_performance.reduce((s: number, c: PaidMediaChannel) => s + c.clicks, 0),
+        conv: channel_performance.reduce((s: number, c: PaidMediaChannel) => s + c.conv, 0),
         value: summary.revenue_generated.value,
     };
 
@@ -150,7 +150,7 @@ export default function AdDashboard() {
                         </tr>
                     </thead>
                     <tbody>
-                        {channel_performance.map((row) => (
+                        {channel_performance.map((row: PaidMediaChannel) => (
                             <tr key={row.channel} style={styles.tr}>
                                 <td style={styles.td}>
                                     <span style={{ ...styles.dot, background: getChannelColor(row.channel) }} />
@@ -187,8 +187,8 @@ export default function AdDashboard() {
 
             {/* ── Individual Channel Summary ── */}
             <div style={styles.channelCardsRow}>
-                {channel_performance.filter(c => c.spend > 0).map((channel) => (
-                    <div key={channel.channel} style={{ ...styles.channelCard, borderTopColor: getChannelColor(channel.channel) }}>
+                {channel_performance.filter((c: PaidMediaChannel) => c.spend > 0).map((channel: PaidMediaChannel) => (
+                    <div key={channel.channel} style={{ ...styles.channelCard, borderTop: `4px solid ${getChannelColor(channel.channel)}` }}>
                         <div style={styles.channelCardHeader}>
                             <span style={{ ...styles.channelDot, background: getChannelColor(channel.channel) }} />
                             <span style={styles.channelCardLabel}>{channel.channel.toUpperCase()}</span>
@@ -212,7 +212,7 @@ export default function AdDashboard() {
                         </div>
                     </div>
                 ))}
-                {channel_performance.filter(c => c.spend === 0).map(c => (
+                {channel_performance.filter((c: PaidMediaChannel) => c.spend === 0).map((c: PaidMediaChannel) => (
                     <div key={c.channel} style={{ ...styles.channelCard, opacity: 0.6, background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <p style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8' }}>{c.channel} - No activity this period</p>
                     </div>

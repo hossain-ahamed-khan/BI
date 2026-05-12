@@ -6,8 +6,9 @@ import { ParetoItem, TopListItem, TrendSummaryMetric } from "@/lib/types/api";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatEuro(value: number): string {
-    return `€${Math.round(value).toLocaleString("de-DE")}`;
+function formatEuro(value: number | string): string {
+    const val = typeof value === 'string' ? parseFloat(value) : value;
+    return `€${Math.round(val).toLocaleString("de-DE")}`;
 }
 
 function getCumulativeColor(value: number): string {
@@ -151,7 +152,7 @@ function KpiCard({
             )}
             <div style={{ marginTop: 12 }}>
                 <Sparkline
-                    data={metric.trend.map(t => ({ value: t.value }))}
+                    data={metric.trend.map(t => ({ value: typeof t === 'number' ? t : t.value }))}
                     color={color}
                     fillColor={fillColor}
                     xLabels={xLabels}
@@ -304,7 +305,10 @@ export default function RestaurantDashboard() {
     const weekLabels = useMemo(() => {
         if (!data) return [];
         const days = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-        return data.summary.food_sales.trend.map(t => days[new Date(t.date).getDay()]);
+        return data.summary.food_sales.trend.map(t => {
+            if (typeof t === 'number') return "";
+            return days[new Date(t.date).getDay()];
+        });
     }, [data]);
 
     if (isLoading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading Trend Analytics...</div>;

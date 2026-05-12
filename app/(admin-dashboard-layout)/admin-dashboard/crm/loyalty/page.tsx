@@ -125,7 +125,7 @@ function StatCard({
             </div>
             {rightSub && <span style={{ fontSize: 10, color: "#9ca3af", marginTop: 3, fontWeight: 500 }}>{rightSub}</span>}
             <div style={{ marginTop: "auto", paddingTop: 8 }}>
-                <Sparkline data={metric.trend.map(t => t.value)} color={color} fill xLabels={xLabels} />
+                <Sparkline data={metric.trend.map(t => typeof t === 'number' ? t : t.value)} color={color} fill xLabels={xLabels} />
             </div>
         </div>
     );
@@ -236,7 +236,10 @@ export default function LoyaltyDashboard() {
     const xLabels = useMemo(() => {
         if (!data) return [];
         const days = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-        return data.summary.total_loyal_plus.trend.map(t => days[new Date(t.date).getDay()]);
+        return data.summary.total_loyal_plus.trend.map(t => {
+            if (typeof t === 'number') return "";
+            return days[new Date(t.date).getDay()];
+        });
     }, [data]);
 
     if (isLoading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading Loyalty Insights...</div>;

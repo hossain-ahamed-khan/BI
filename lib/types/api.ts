@@ -1,8 +1,10 @@
 export interface MetricValue {
   value: number;
   growth_ly?: number;
+  growth_lw?: number;
   ytd?: number;
   target?: number;
+  trend?: ProductTrendPoint[] | number[];
 }
 
 export interface RateMetric {
@@ -157,8 +159,10 @@ export interface ProductTrendPoint {
 export interface ProductSummaryMetric {
   value: number | string;
   growth_lw?: number;
+  growth_lm?: number;
   growth_ly?: number;
   percentage?: number;
+  percentage_of_total?: number;
   name?: string;
   trend: ProductTrendPoint[] | number[];
 }
@@ -419,7 +423,7 @@ export interface PaidMediaData {
   end_date: string;
 }
 
-export interface PaymentMethodsData {
+export interface WebsiteAnalyticsData {
 
   summary: {
     site_visits: ProductSummaryMetric & { users_info: string };
@@ -608,16 +612,7 @@ export interface FBPerformanceData {
 }
 
 export interface PartySizeRow {
-  pax: number;
-  reservations: number;
-  perc: number;
-  covers: number;
-  avg_spend: number;
-  vs_ly: number;
-}
-
-export interface PartySizeRow {
-  pax: string;
+  pax: string | number;
   reservations: number;
   perc: number;
   covers: number;

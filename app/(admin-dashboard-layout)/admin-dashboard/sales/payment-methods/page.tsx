@@ -18,8 +18,9 @@ import { ProductSummaryMetric, BreakdownItem } from "@/lib/types/api";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatEuro(value: number): string {
-    return `€ ${Math.round(value).toLocaleString("de-DE")}`;
+function formatEuro(value: number | string): string {
+    const val = typeof value === 'string' ? parseFloat(value) : value;
+    return `€${Math.round(val).toLocaleString("de-DE")}`;
 }
 
 const COLORS = ["#6366f1", "#a5b4fc", "#f59e0b", "#14b8a6", "#22c55e", "#c084fc", "#ef4444", "#3b82f6"];
@@ -48,16 +49,15 @@ function MiniChart({
     color: string;
     xLabels: string[];
 }) {
-    const values = metric.trend.map(t => t.value);
+    const values = metric.trend.map(t => typeof t === 'number' ? t : t.value);
     if (values.length === 0) {
         return <div style={{ height: 62, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#cbd5e1' }}>No trend data</div>;
     }
 
-    const data = metric.trend.map((t, i) => ({ 
-        d: xLabels[i] || '', 
-        value: t.value 
-    }));
-    
+    const data = metric.trend.map((t, i) => ({
+        d: xLabels[i] || '',
+        value: typeof t === 'number' ? t : t.value
+    }));    
     const max = Math.max(...values, 1);
     const min = Math.min(...values);
     const ticks = [Math.round(min), Math.round(max)];
@@ -114,7 +114,7 @@ function StatCard({
     xLabels,
 }: {
     label: string;
-    value: number;
+    value: number | string;
     sub: React.ReactNode;
     metric: ProductSummaryMetric;
     color: string;
@@ -158,7 +158,10 @@ export default function PaymentDashboard() {
     const weekLabels = useMemo(() => {
         if (!data) return [];
         const days = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-        return data.summary.total_received.trend.map(t => days[new Date(t.date).getDay()]);
+        return data.summary.total_received.trend.map(t => {
+            if (typeof t === 'number') return "";
+            return days[new Date(t.date).getDay()];
+        });
     }, [data]);
 
     if (isLoading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading Payment Analytics...</div>;

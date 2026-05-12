@@ -325,7 +325,6 @@ export default function DashboardHomePage() {
                     sub={`YTD: € ${summary.gross_revenue.ytd?.toLocaleString()}`}
                     chartValues={revenue_evolution.map(d => d.Total / 1000)}
                     chartLabels={chartLabels}
-                    chartTicks={[20, 40, 60]}
                     color="#6366f1"
                 />
                 <KPICard
@@ -335,7 +334,6 @@ export default function DashboardHomePage() {
                     badgePositive={summary.net_revenue.growth_ly! >= 0}
                     chartValues={revenue_evolution.map(d => (d.Total * 0.85) / 1000)}
                     chartLabels={chartLabels}
-                    chartTicks={[20, 40, 60]}
                     color="#6366f1"
                 />
                 <KPICard
@@ -345,7 +343,6 @@ export default function DashboardHomePage() {
                     badgePositive={summary.total_covers.growth_ly! >= 0}
                     chartValues={revenue_evolution.map(d => d.Total / 400)}
                     chartLabels={chartLabels}
-                    chartTicks={[40, 60, 80]}
                     color="#10b981"
                 />
                 <KPICard
@@ -355,7 +352,6 @@ export default function DashboardHomePage() {
                     badgePositive={false}
                     chartValues={[30, 25, 35, 30, 20, 30, 25]}
                     chartLabels={chartLabels}
-                    chartTicks={[0, 10, 20]}
                     color="#ef4444"
                 />
                 <KPICard
@@ -365,7 +361,6 @@ export default function DashboardHomePage() {
                     badgePositive={false}
                     chartValues={[8, 10, 5, 8, 12, 8, 5]}
                     chartLabels={chartLabels}
-                    chartTicks={[0, 5, 10]}
                     color="#f97316"
                 />
             </div>
@@ -379,7 +374,6 @@ export default function DashboardHomePage() {
                     sub={`Target: <${summary.labor_cost_perc.target}%`}
                     chartValues={revenue_evolution.map(() => 22 + Math.random() * 2)}
                     chartLabels={chartLabels}
-                    chartTicks={[22, 23, 24]}
                     color="#f59e0b"
                 />
 
@@ -391,7 +385,6 @@ export default function DashboardHomePage() {
                     sub={`Target: <${summary.fb_cost_rate.target}%`}
                     chartValues={revenue_evolution.map(() => 24 + Math.random() * 2)}
                     chartLabels={chartLabels}
-                    chartTicks={[24, 25, 26]}
                     color="#10b981"
                 />
 
@@ -405,7 +398,6 @@ export default function DashboardHomePage() {
                     detail="★★★★☆"
                     chartValues={[4.2, 4.3, 4.4, 4.5, 4.5, 4.6, 4.6]}
                     chartLabels={chartLabels}
-                    chartTicks={[4.2, 4.4, 4.6]}
                     color="#6366f1"
                 />
 
@@ -417,7 +409,6 @@ export default function DashboardHomePage() {
                     sub="of total covers"
                     chartValues={[32, 34, 33, 35, 36, 38, 38]}
                     chartLabels={chartLabels}
-                    chartTicks={[30, 35, 40]}
                     color="#8b83f6"
                 />
             </div>
@@ -504,7 +495,7 @@ export default function DashboardHomePage() {
                                 tickFormatter={(v) => `€ ${v / 1000}k`}
                             />
                             <Tooltip
-                                formatter={(v: number) => `€ ${(v / 1000).toFixed(1)}k`}
+                                formatter={(v: any) => `€ ${(Number(v) / 1000).toFixed(1)}k`}
                                 contentStyle={{
                                     fontSize: 11,
                                     border: "1px solid #f1f5f9",

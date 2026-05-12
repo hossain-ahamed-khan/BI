@@ -15,12 +15,14 @@ import { ProductTableItem, ProductSummaryMetric } from "@/lib/types/api";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function fmtEur(n: number): string {
-    return "€" + Math.round(n).toLocaleString("de-DE");
+function fmtEur(n: number | string): string {
+    const val = typeof n === 'string' ? parseFloat(n) : n;
+    return "€" + Math.round(val).toLocaleString("de-DE");
 }
 
-function fmtNum(n: number): string {
-    return Math.round(n).toLocaleString("de-DE");
+function fmtNum(n: number | string): string {
+    const val = typeof n === 'string' ? parseFloat(n) : n;
+    return Math.round(val).toLocaleString("de-DE");
 }
 
 // ── Components ─────────────────────────────────────────────────────────────────
@@ -41,7 +43,10 @@ const CustomMiniTooltip = ({ active, payload, label }: any) => {
 const ProductKpiChart = ({ metric, color }: { metric: ProductSummaryMetric, color: string }) => {
     // Map dates to weekdays for the X-Axis
     const days = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-    const data = metric.trend.map(p => {
+    const data = metric.trend.map((p, i) => {
+        if (typeof p === 'number') {
+            return { d: i.toString(), value: p };
+        }
         const date = new Date(p.date);
         return { 
             d: days[date.getDay()], 
@@ -49,7 +54,7 @@ const ProductKpiChart = ({ metric, color }: { metric: ProductSummaryMetric, colo
         };
     });
     
-    const values = metric.trend.map(p => p.value);
+    const values = metric.trend.map(p => typeof p === 'number' ? p : p.value);
     const max = Math.max(...values, 1);
     const min = Math.min(...values);
     
@@ -170,7 +175,7 @@ export default function SalesByProductPage() {
                 <KpiCard label="Total SKUs" value={summary.total_skus.value} subValue="Active products" metric={summary.total_skus} color="#6366f1" />
                 <KpiCard label="Units Sold" value={fmtNum(summary.units_sold.value)} subValue={`${summary.units_sold.growth_lw! >= 0 ? '▲' : '▼'} ${Math.abs(summary.units_sold.growth_lw!)}% vs LW`} metric={summary.units_sold} color="#10b981" />
                 <KpiCard label="Top Category" value={summary.top_category.name || ""} subValue={`${summary.top_category.percentage}% of units`} metric={summary.top_category} color="#f59e0b" />
-                <KpiCard label="Avg Price / Unit" value={summary.avg_price_unit.value.toFixed(2)} subValue="This period" metric={summary.avg_price_unit} color="#8b5cf6" prefix="€" />
+                <KpiCard label="Avg Price / Unit" value={(typeof summary.avg_price_unit.value === 'string' ? parseFloat(summary.avg_price_unit.value) : summary.avg_price_unit.value).toFixed(2)} subValue="This period" metric={summary.avg_price_unit} color="#8b5cf6" prefix="€" />
             </div>
 
             {/* Table Card */}

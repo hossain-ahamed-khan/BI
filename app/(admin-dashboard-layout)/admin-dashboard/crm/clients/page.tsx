@@ -2,16 +2,18 @@
 import React, { useState, useMemo } from "react";
 import { useRange } from "@/components/range-context";
 import { useCRMData } from "@/hooks/use-metrics";
-import { CRMClient } from "@/lib/types/api";
+import { CRMClient, ProductTrendPoint } from "@/lib/types/api";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmtEur(n: number): string {
-    return "€ " + Math.round(n).toLocaleString("de-DE");
+function fmtEur(n: number | string): string {
+    const val = typeof n === 'string' ? parseFloat(n) : n;
+    return "€ " + Math.round(val).toLocaleString("de-DE");
 }
 
-function fmtNum(n: number): string {
-    return Math.round(n).toLocaleString("de-DE");
+function fmtNum(n: number | string): string {
+    const val = typeof n === 'string' ? parseFloat(n) : n;
+    return Math.round(val).toLocaleString("de-DE");
 }
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -41,10 +43,10 @@ const tagColors: Record<string, { bg: string; text: string }> = {
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
-function MiniChart({ data, color, gradientId }: { data: { value: number }[]; color: string; gradientId: string }) {
+function MiniChart({ data, color, gradientId }: { data: (ProductTrendPoint | number | { value: number })[]; color: string; gradientId: string }) {
     if (data.length === 0) return <div style={{ height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#cbd5e1' }}>No data</div>;
 
-    const values = data.map(d => d.value);
+    const values = data.map(d => typeof d === 'number' ? d : d.value);
     const min = Math.min(...values);
     const max = Math.max(...values, 1);
     const range = max - min || 1;
@@ -55,9 +57,9 @@ function MiniChart({ data, color, gradientId }: { data: { value: number }[]; col
     const chartW = W - padL - padR;
     const chartH = H - padT - padB;
 
-    const pts = data.map((v, i) => [
-        padL + (i / Math.max(1, data.length - 1)) * chartW,
-        padT + chartH - ((v.value - min) / range) * chartH,
+    const pts = values.map((v, i) => [
+        padL + (i / Math.max(1, values.length - 1)) * chartW,
+        padT + chartH - ((v - min) / range) * chartH,
     ]);
 
     const linePath = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(2)},${p[1].toFixed(2)}`).join(" ");

@@ -17,7 +17,9 @@ import {
   LaborCostData,
   AbsencesData,
   FBPerformanceData,
-  ReservationsData
+  ReservationsData,
+  PaidMediaData,
+  WebsiteAnalyticsData
 } from './types/api';
 
 export const metricsService = {
@@ -77,20 +79,6 @@ export const metricsService = {
     if (endDate) params.end_date = endDate;
 
     const { data } = await apiClient.get<LaborCostData>('/api/metrics/labor-cost-dashboard-v2/', { params });
-    return data;
-  },
-
-  getBookingWidgetData: async (
-
-    period: string = 'month',
-    startDate?: string,
-    endDate?: string
-  ): Promise<PaidMediaData> => {
-    const params: Record<string, string> = { period };
-    if (startDate) params.start_date = startDate;
-    if (endDate) params.end_date = endDate;
-
-    const { data } = await apiClient.get<PaidMediaData>('/api/metrics/paid-media/', { params });
     return data;
   },
 
@@ -258,6 +246,19 @@ export const metricsService = {
     if (endDate) params.end_date = endDate;
 
     const { data } = await apiClient.get<TipsData>('/api/metrics/tips/', { params });
+    return data;
+  },
+
+  getPaidMediaData: async (
+    period: string = 'month',
+    startDate?: string,
+    endDate?: string
+  ): Promise<PaidMediaData> => {
+    const params: Record<string, string> = { period };
+    if (startDate) params.start_date = startDate;
+    if (endDate) params.end_date = endDate;
+
+    const { data } = await apiClient.get<PaidMediaData>('/api/metrics/paid-media/', { params });
     return data;
   },
 
