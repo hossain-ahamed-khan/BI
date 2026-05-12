@@ -1,39 +1,50 @@
 "use client";
-import React from "react";
+import React, { useMemo } from "react";
+import { useRange } from "@/components/range-context";
+import { useWebsiteAnalytics } from "@/hooks/use-metrics";
+import { ProductSummaryMetric } from "@/lib/types/api";
+
+const COLORS = ["#6366f1", "#818cf8", "#f97316", "#22c55e", "#06b6d4", "#60a5fa"];
 
 /* ─────────────────────────────────────────────────────────────
    SPARKLINE
 ───────────────────────────────────────────────────────────── */
 interface SparklineProps {
     points: number[];
-    min: number;
-    max: number;
     color: string;
     yLabels: string[];
     xLabels: string[];
 }
 
-function Sparkline({ points, min, max, color, yLabels, xLabels }: SparklineProps) {
+function Sparkline({ points, color, yLabels, xLabels }: SparklineProps) {
     const W = 200, H = 72, padR = 40, padB = 14, padT = 4;
     const chartW = W - padR, chartH = H - padT - padB;
     const n = points.length;
-    const xs = points.map((_, i) => (i / (n - 1)) * chartW);
-    const ys = points.map((v) => padT + chartH - ((v - min) / (max - min)) * chartH);
+    
+    if (n === 0) return <div style={{ height: H, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#cbd5e1' }}>No trend data</div>;
+
+    const min = Math.min(...points);
+    const max = Math.max(...points, 1);
+    const range = max - min || 1;
+
+    const xs = points.map((_, i) => (i / Math.max(1, n - 1)) * chartW);
+    const ys = points.map((v) => padT + chartH - ((v - min) / range) * chartH);
+    
     const linePts = xs.map((x, i) => `${x.toFixed(1)},${ys[i].toFixed(1)}`).join(" ");
     const areaPts = [
         ...xs.map((x, i) => `${x.toFixed(1)},${ys[i].toFixed(1)}`),
         `${xs[n - 1].toFixed(1)},${(padT + chartH).toFixed(1)}`,
         `0,${(padT + chartH).toFixed(1)}`,
     ].join(" ");
+    
     const gridYs = [padT, padT + chartH / 2, padT + chartH];
-    // eslint-disable-next-line react-hooks/purity
-    const uid = `sp${color.replace(/[^a-z0-9]/gi, "").slice(0, 6)}${Math.random().toString(36).slice(2, 5)}`;
+    const uid = `sp${color.replace(/[^a-z0-9]/gi, "").slice(0, 6)}`;
 
     return (
         <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block", overflow: "visible" }}>
             <defs>
                 <linearGradient id={uid} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={color} stopOpacity={0.22} />
+                    <stop offset="0%" stopColor={color} stopOpacity={0.18} />
                     <stop offset="100%" stopColor={color} stopOpacity={0} />
                 </linearGradient>
             </defs>
@@ -41,14 +52,17 @@ function Sparkline({ points, min, max, color, yLabels, xLabels }: SparklineProps
                 <line key={i} x1={0} y1={gy} x2={chartW} y2={gy} stroke="#eff0f5" strokeWidth={0.8} />
             ))}
             {yLabels.map((lbl, i) => (
-                <text key={i} x={W - 2} y={gridYs[i] + 3.5} fontSize={7.5} fill="#c9ccd6" textAnchor="end">{lbl}</text>
+                <text key={i} x={W - 2} y={gridYs[i] + 3.5} fontSize={7.5} fill="#c9ccd6" textAnchor="end" fontWeight="700">{lbl}</text>
             ))}
             <polygon points={areaPts} fill={`url(#${uid})`} />
             <polyline points={linePts} fill="none" stroke={color} strokeWidth={1.7} strokeLinejoin="round" />
-            {xs.map((x, i) => <circle key={i} cx={x} cy={ys[i]} r={2.6} fill={color} />)}
-            {xLabels.map((lbl, i) => (
-                <text key={i} x={xs[i]} y={H - 1} fontSize={7.5} fill="#c9ccd6" textAnchor="middle">{lbl}</text>
-            ))}
+            {xs.map((x, i) => <circle key={i} cx={x} cy={ys[i]} r={2.5} fill={color} stroke="#fff" strokeWidth={0.8} />)}
+            {xLabels.map((lbl, i) => {
+                const x = (i / Math.max(1, xLabels.length - 1)) * chartW;
+                return (
+                    <text key={i} x={x} y={H - 1} fontSize={7.5} fill="#c9ccd6" textAnchor="middle" fontWeight="600">{lbl}</text>
+                );
+            })}
         </svg>
     );
 }
@@ -56,14 +70,21 @@ function Sparkline({ points, min, max, color, yLabels, xLabels }: SparklineProps
 /* ─────────────────────────────────────────────────────────────
    KPI CARD
 ───────────────────────────────────────────────────────────── */
-const DAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
-
 interface KpiCardProps {
-    label: string; value: string; delta: string; up: boolean; sub?: string;
-    pts: number[]; min: number; max: number; color: string; yLbls: string[];
+    label: string; value: string | number; delta: string; up: boolean; sub?: string;
+    metric: ProductSummaryMetric; color: string; xLabels: string[];
 }
 
-function KpiCard({ label, value, delta, up, sub, pts, min, max, color, yLbls }: KpiCardProps) {
+function KpiCard({ label, value, delta, up, sub, metric, color, xLabels }: KpiCardProps) {
+    const pts = metric.trend as number[];
+    const min = Math.min(...pts);
+    const max = Math.max(...pts, 1);
+    const yLbls = [
+        max > 1000 ? `${(max/1000).toFixed(0)}k` : max.toString(),
+        ((max+min)/2) > 1000 ? `${((max+min)/2000).toFixed(0)}k` : Math.round((max+min)/2).toString(),
+        min > 1000 ? `${(min/1000).toFixed(0)}k` : min.toString()
+    ];
+
     return (
         <div style={s.kpiCard}>
             <div style={s.cardHeader}>
@@ -76,7 +97,7 @@ function KpiCard({ label, value, delta, up, sub, pts, min, max, color, yLbls }: 
             </div>
             {sub && <div style={s.kpiSub}>{sub}</div>}
             <div style={{ marginTop: 8 }}>
-                <Sparkline points={pts} min={min} max={max} color={color} yLabels={yLbls} xLabels={DAYS} />
+                <Sparkline points={pts} color={color} yLabels={yLbls} xLabels={xLabels} />
             </div>
         </div>
     );
@@ -85,54 +106,47 @@ function KpiCard({ label, value, delta, up, sub, pts, min, max, color, yLbls }: 
 /* ─────────────────────────────────────────────────────────────
    BAR CHART
 ───────────────────────────────────────────────────────────── */
-const barData = [
-    { day: "Mon", users: 900, sessions: 1400 },
-    { day: "Tue", users: 1100, sessions: 2200 },
-    { day: "Wed", users: 1000, sessions: 2000 },
-    { day: "Thu", users: 1300, sessions: 2600 },
-    { day: "Fri", users: 1200, sessions: 2400 },
-    { day: "Sat", users: 1500, sessions: 3200 },
-    { day: "Sun", users: 700, sessions: 2700 },
-];
-
-function BarChart() {
+function BarChart({ data }: { data: any[] }) {
     const W = 660, H = 210, padL = 46, padB = 24, padR = 12, padT = 22;
     const chartW = W - padL - padR, chartH = H - padT - padB;
-    const maxVal = 4000, yTicks = [0, 1000, 2000, 3000, 4000];
-    const n = barData.length, slotW = chartW / n;
-    const barW = slotW * 0.26, gap = 5;
+    
+    const allVals = data.flatMap(d => [d.sessions, d.users]);
+    const maxVal = Math.max(...allVals, 1);
+    const yTicks = [0, maxVal / 2, maxVal];
+    
+    const n = data.length;
+    const slotW = chartW / Math.max(1, n);
+    const barW = slotW * 0.3, gap = 4;
 
     return (
         <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block" }}>
-            {/* Legend top-right */}
             <circle cx={W - 170} cy={padT - 8} r={4} fill="#6366f1" />
-            <text x={W - 162} y={padT - 4.5} fontSize={9} fill="#9ca3af">Users</text>
+            <text x={W - 162} y={padT - 4.5} fontSize={9} fill="#9ca3af" fontWeight="600">Users</text>
             <circle cx={W - 112} cy={padT - 8} r={4} fill="#c7d2fe" />
-            <text x={W - 104} y={padT - 4.5} fontSize={9} fill="#9ca3af">Sessions</text>
+            <text x={W - 104} y={padT - 4.5} fontSize={9} fill="#9ca3af" fontWeight="600">Sessions</text>
 
-            {/* Y grid + labels */}
             {yTicks.map((v) => {
                 const y = padT + chartH - (v / maxVal) * chartH;
                 return (
                     <g key={v}>
                         <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="#f0f1f6" strokeWidth={0.8} />
-                        <text x={padL - 6} y={y + 3.5} fontSize={9} fill="#c9ccd6" textAnchor="end">
-                            {v === 0 ? "0" : `${v / 1000},000`}
+                        <text x={padL - 6} y={y + 3.5} fontSize={9} fill="#c9ccd6" textAnchor="end" fontWeight="700">
+                            {v >= 1000 ? `${(v / 1000).toFixed(0)}k` : Math.round(v)}
                         </text>
                     </g>
                 );
             })}
 
-            {/* Bars */}
-            {barData.map((d, i) => {
+            {data.map((d, i) => {
                 const cx = padL + i * slotW + slotW / 2;
                 const sh = (d.sessions / maxVal) * chartH;
                 const uh = (d.users / maxVal) * chartH;
+                const dayLabel = d.date.split('-')[2];
                 return (
-                    <g key={d.day}>
-                        <rect x={cx - barW - gap / 2} y={padT + chartH - sh} width={barW} height={sh} rx={3} fill="#c7d2fe" />
-                        <rect x={cx + gap / 2} y={padT + chartH - uh} width={barW} height={uh} rx={3} fill="#6366f1" />
-                        <text x={cx} y={H - 6} fontSize={9} fill="#b0b4c3" textAnchor="middle">{d.day}</text>
+                    <g key={i}>
+                        <rect x={cx - barW - gap / 2} y={padT + chartH - sh} width={barW} height={sh} rx={2} fill="#c7d2fe" />
+                        <rect x={cx + gap / 2} y={padT + chartH - uh} width={barW} height={uh} rx={2} fill="#6366f1" />
+                        {n < 15 && <text x={cx} y={H - 6} fontSize={9} fill="#b0b4c3" textAnchor="middle" fontWeight="600">{dayLabel}</text>}
                     </g>
                 );
             })}
@@ -143,16 +157,6 @@ function BarChart() {
 /* ─────────────────────────────────────────────────────────────
    WAVE CHART
 ───────────────────────────────────────────────────────────── */
-const waveData = [
-    { day: "Mon", avg: 4.0, bounce: 0.4 },
-    { day: "Tue", avg: 2.4, bounce: 2.9 },
-    { day: "Wed", avg: 3.6, bounce: 1.7 },
-    { day: "Thu", avg: 2.0, bounce: 3.6 },
-    { day: "Fri", avg: 3.2, bounce: 1.1 },
-    { day: "Sat", avg: 4.2, bounce: 0.1 },
-    { day: "Sun", avg: 3.1, bounce: 2.9 },
-];
-
 function smooth(pts: { x: number; y: number }[]) {
     if (pts.length < 2) return "";
     let d = `M ${pts[0].x},${pts[0].y}`;
@@ -163,42 +167,35 @@ function smooth(pts: { x: number; y: number }[]) {
     return d;
 }
 
-function WaveChart() {
+function WaveChart({ data }: { data: any[] }) {
     const W = 660, H = 210, padL = 10, padR = 10, padT = 22, padB = 24;
     const chartW = W - padL - padR, chartH = H - padT - padB;
-    const n = waveData.length, minV = 0, maxV = 4.5;
-    const toY = (v: number) => padT + chartH - ((v - minV) / (maxV - minV)) * chartH;
+    const n = data.length;
+    
+    const maxTime = Math.max(...data.map(d => d.avg_time), 1);
+    const maxBounce = Math.max(...data.map(d => d.bounce_rate), 1);
+    
+    const toYTime = (v: number) => padT + chartH - (v / maxTime) * chartH;
+    const toYBounce = (v: number) => padT + chartH - (v / maxBounce) * chartH;
 
-    const avgPts = waveData.map((d, i) => ({ x: padL + (i / (n - 1)) * chartW, y: toY(d.avg) }));
-    const bncPts = waveData.map((d, i) => ({ x: padL + (i / (n - 1)) * chartW, y: toY(d.bounce) }));
+    const avgPts = data.map((d, i) => ({ x: padL + (i / Math.max(1, n - 1)) * chartW, y: toYTime(d.avg_time) }));
+    const bncPts = data.map((d, i) => ({ x: padL + (i / Math.max(1, n - 1)) * chartW, y: toYBounce(d.bounce_rate) }));
+    
     const avgPath = smooth(avgPts);
     const bncPath = smooth(bncPts);
-    const areaPath = avgPath + ` L ${avgPts[n - 1].x},${padT + chartH} L ${avgPts[0].x},${padT + chartH} Z`;
 
     return (
         <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block" }}>
-            <defs>
-                <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#fb923c" stopOpacity={0.18} />
-                    <stop offset="100%" stopColor="#fb923c" stopOpacity={0} />
-                </linearGradient>
-            </defs>
-
-            {/* Legend */}
             <circle cx={W - 232} cy={padT - 8} r={4} fill="#fb923c" />
-            <text x={W - 224} y={padT - 4.5} fontSize={9} fill="#9ca3af">Avg Time (min)</text>
+            <text x={W - 224} y={padT - 4.5} fontSize={9} fill="#9ca3af" fontWeight="600">Avg Time</text>
             <circle cx={W - 120} cy={padT - 8} r={4} fill="#ef4444" />
-            <text x={W - 112} y={padT - 4.5} fontSize={9} fill="#9ca3af">Bounce Rate %</text>
+            <text x={W - 112} y={padT - 4.5} fontSize={9} fill="#9ca3af" fontWeight="600">Bounce Rate %</text>
 
-            <path d={areaPath} fill="url(#wg)" />
             <path d={avgPath} fill="none" stroke="#fb923c" strokeWidth={2.2} />
-            {avgPts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={3.5} fill="#fb923c" />)}
             <path d={bncPath} fill="none" stroke="#ef4444" strokeWidth={2.2} />
-            {bncPts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={3.5} fill="#ef4444" />)}
-
-            {waveData.map((d, i) => (
-                <text key={i} x={padL + (i / (n - 1)) * chartW} y={H - 6} fontSize={9} fill="#b0b4c3" textAnchor="middle">{d.day}</text>
-            ))}
+            
+            {avgPts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={2.5} fill="#fb923c" stroke="#fff" strokeWidth={1} />)}
+            {bncPts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={2.5} fill="#ef4444" stroke="#fff" strokeWidth={1} />)}
         </svg>
     );
 }
@@ -206,14 +203,12 @@ function WaveChart() {
 /* ─────────────────────────────────────────────────────────────
    LANGUAGE ROW
 ───────────────────────────────────────────────────────────── */
-function LangRow({ code, name, pct, visits, color }: { code: string; name: string; pct: number; visits: string; color: string }) {
+function LangRow({ name, pct, visits, color }: { name: string; pct: number; visits: number; color: string }) {
     return (
         <div style={{ marginBottom: 14 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                <span style={{ fontSize: 12, color: "#374151", fontWeight: 500 }}>
-                    <span style={{ fontSize: 9, color: "#9ca3af", marginRight: 4 }}>{code}</span>{name}
-                </span>
-                <span style={{ fontSize: 11, color: "#9ca3af" }}>{pct}% · {visits}</span>
+                <span style={{ fontSize: 12, color: "#374151", fontWeight: 600 }}>{name}</span>
+                <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600 }}>{pct}% · {visits.toLocaleString()}</span>
             </div>
             <div style={{ height: 5, background: "#f3f4f6", borderRadius: 99, overflow: "hidden" }}>
                 <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: 99 }} />
@@ -226,21 +221,44 @@ function LangRow({ code, name, pct, visits, color }: { code: string; name: strin
    DASHBOARD
 ───────────────────────────────────────────────────────────── */
 export default function AnalyticsDashboard() {
+    const { activeRange, customStart, customEnd } = useRange();
+    const { data, isLoading, error } = useWebsiteAnalytics(activeRange, customStart, customEnd);
+
+    const xLabels = useMemo(() => {
+        if (!data) return [];
+        const days = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+        return data.summary.site_visits.trend.map((_, i) => {
+            if (!data.charts.visits_users[i]) return "";
+            return days[new Date(data.charts.visits_users[i].date).getDay()];
+        });
+    }, [data]);
+
+    if (isLoading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading Website Analytics...</div>;
+    if (error || !data) return <div style={{ padding: 40, textAlign: 'center', color: 'red' }}>Error loading analytics.</div>;
+
+    const { summary, charts, breakdowns } = data;
+
     return (
         <div style={s.root}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <h1 style={{ fontSize: 20, fontWeight: 700, color: '#1e293b' }}>Website Analytics</h1>
+                <div style={{ fontSize: 11, color: '#64748b', background: '#fff', padding: '6px 12px', borderRadius: 99, border: '1px solid #e2e8f0' }}>
+                    Data period: <span style={{ fontWeight: 700, color: '#6366f1', textTransform: 'capitalize' }}>{activeRange}</span>
+                </div>
+            </div>
 
             {/* ROW 1 – KPI */}
             <div style={s.kpiRow}>
-                <KpiCard label="SITE VISITS" value="14,820" delta="+18.3% vs LW" up sub="Users: 9,240"
-                    pts={[10000, 10800, 11400, 12100, 13000, 14200, 14820]} min={5000} max={15000} color="#818cf8" yLbls={["15,000", "10,000", "5,000"]} />
-                <KpiCard label="UNIQUE USERS" value="9,240" delta="+14.1% vs LW" up sub="New: 6,840 (74%)"
-                    pts={[5000, 5800, 6800, 7400, 8200, 8800, 9240]} min={5000} max={10000} color="#818cf8" yLbls={["10,000", "7,500", "5,000"]} />
-                <KpiCard label="AVG. TIME ON SITE" value="3m 48s" delta="+0.4% vs LW" up
-                    pts={[3.0, 3.2, 3.4, 3.5, 3.6, 3.75, 3.8]} min={3.0} max={4.0} color="#fb923c" yLbls={["4.0", "3.5", "3.0"]} />
-                <KpiCard label="BOUNCE RATE" value="42.1%" delta="-2.4pp vs LW" up={false}
-                    pts={[47, 46.5, 46, 45.5, 44.5, 43.5, 42.1]} min={40} max={50} color="#f87171" yLbls={["50", "45", "40"]} />
-                <KpiCard label="PAGES / SESSION" value="3.8" delta="+0.3 vs LW" up
-                    pts={[3.0, 3.2, 3.4, 3.5, 3.6, 3.7, 3.8]} min={3.0} max={4.0} color="#34d399" yLbls={["4.0", "3.5", "3.0"]} />
+                <KpiCard label="SITE VISITS" value={summary.site_visits.value.toLocaleString()} delta={`${Math.abs(summary.site_visits.growth_lw!)}% vs LW`} up={summary.site_visits.growth_lw! >= 0} sub={summary.site_visits.users_info}
+                    metric={summary.site_visits} color="#818cf8" xLabels={xLabels} />
+                <KpiCard label="UNIQUE USERS" value={summary.unique_users.value.toLocaleString()} delta={`${Math.abs(summary.unique_users.growth_lw!)}% vs LW`} up={summary.unique_users.growth_lw! >= 0} sub={summary.unique_users.new_users_info}
+                    metric={summary.unique_users} color="#818cf8" xLabels={xLabels} />
+                <KpiCard label="AVG. TIME ON SITE" value={summary.avg_time_on_site.value} delta={`${Math.abs(summary.avg_time_on_site.growth_lw!)}% vs LW`} up={summary.avg_time_on_site.growth_lw! >= 0}
+                    metric={summary.avg_time_on_site} color="#fb923c" xLabels={xLabels} />
+                <KpiCard label="BOUNCE RATE" value={summary.bounce_rate.value} delta={`${Math.abs(summary.bounce_rate.growth_lw!)}pp vs LW`} up={summary.bounce_rate.growth_lw! <= 0}
+                    metric={summary.bounce_rate} color="#f87171" xLabels={xLabels} />
+                <KpiCard label="PAGES / SESSION" value={summary.pages_per_session.value} delta={`${Math.abs(summary.pages_per_session.growth_lw!)} vs LW`} up={summary.pages_per_session.growth_lw! >= 0}
+                    metric={summary.pages_per_session} color="#34d399" xLabels={xLabels} />
             </div>
 
             {/* ROW 2 – Charts */}
@@ -250,14 +268,14 @@ export default function AnalyticsDashboard() {
                         <span style={s.cardLabel}>SITE VISITS BY USERS – DAILY</span>
                         <span style={s.arrow}>→</span>
                     </div>
-                    <BarChart />
+                    <BarChart data={charts.visits_users} />
                 </div>
                 <div style={s.chartCard}>
                     <div style={s.cardHeader}>
                         <span style={s.cardLabel}>AVG. TIME SPENT – DAILY (MIN)</span>
                         <span style={s.arrow}>→</span>
                     </div>
-                    <WaveChart />
+                    <WaveChart data={charts.time_bounce} />
                 </div>
             </div>
 
@@ -279,20 +297,12 @@ export default function AnalyticsDashboard() {
                             </tr>
                         </thead>
                         <tbody>
-                            {[
-                                { code: "ES", name: "Spain", v: "7,706", p: "52%", t: "4m 12s" },
-                                { code: "GB", name: "UK", v: "2,668", p: "18%", t: "3m 58s" },
-                                { code: "US", name: "USA", v: "1,778", p: "12%", t: "3m 22s" },
-                                { code: "DE", name: "Germany", v: "1,186", p: "8%", t: "3m 44s" },
-                                { code: "FR", name: "France", v: "742", p: "5%", t: "3m 15s" },
-                                { code: "IT", name: "Italy", v: "446", p: "3%", t: "2m 58s" },
-                                { code: "", name: "Other", v: "294", p: "2%", t: "2m 44s" },
-                            ].map((r) => (
-                                <tr key={r.name}>
-                                    <td style={s.td}><span style={{ fontSize: 9, color: "#9ca3af", marginRight: 4 }}>{r.code}</span>{r.name}</td>
-                                    <td style={{ ...s.td, textAlign: "right" }}>{r.v}</td>
-                                    <td style={{ ...s.td, textAlign: "right" }}>{r.p}</td>
-                                    <td style={{ ...s.td, textAlign: "right" }}>{r.t}</td>
+                            {breakdowns.by_country.map((r, i) => (
+                                <tr key={i}>
+                                    <td style={s.td}>{r.label}</td>
+                                    <td style={{ ...s.td, textAlign: "right" }}>{r.visits.toLocaleString()}</td>
+                                    <td style={{ ...s.td, textAlign: "right" }}>{r.perc}%</td>
+                                    <td style={{ ...s.td, textAlign: "right" }}>{r.avg_time}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -314,20 +324,11 @@ export default function AnalyticsDashboard() {
                             </tr>
                         </thead>
                         <tbody>
-                            {[
-                                { name: "Madrid", v: "5,420", p: "36.6%" },
-                                { name: "London", v: "2,100", p: "14.2%" },
-                                { name: "Barcelona", v: "1,480", p: "9.9%" },
-                                { name: "New York", v: "920", p: "6.2%" },
-                                { name: "Berlin", v: "740", p: "4.9%" },
-                                { name: "Paris", v: "620", p: "4.2%" },
-                                { name: "Dubai", v: "480", p: "3.2%" },
-                                { name: "Other", v: "3,060", p: "20.6%" },
-                            ].map((r) => (
-                                <tr key={r.name}>
-                                    <td style={s.td}>🏙 {r.name}</td>
-                                    <td style={{ ...s.td, textAlign: "right" }}>{r.v}</td>
-                                    <td style={{ ...s.td, textAlign: "right" }}>{r.p}</td>
+                            {breakdowns.by_city.map((r, i) => (
+                                <tr key={i}>
+                                    <td style={s.td}>🏙 {r.label}</td>
+                                    <td style={{ ...s.td, textAlign: "right" }}>{r.visits.toLocaleString()}</td>
+                                    <td style={{ ...s.td, textAlign: "right" }}>{r.perc}%</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -340,13 +341,10 @@ export default function AnalyticsDashboard() {
                         <span style={s.cardLabel}>VISITS BY LANGUAGE</span>
                         <span style={s.arrow}>→</span>
                     </div>
-                    <div style={{ marginTop: 8 }}>
-                        <LangRow code="ES" name="Spanish" pct={48} visits="7,114" color="#6366f1" />
-                        <LangRow code="GB" name="English" pct={34} visits="5,039" color="#818cf8" />
-                        <LangRow code="DE" name="German" pct={7} visits="1,037" color="#f97316" />
-                        <LangRow code="FR" name="French" pct={5} visits="741" color="#22c55e" />
-                        <LangRow code="IT" name="Italian" pct={3} visits="445" color="#06b6d4" />
-                        <LangRow code="—" name="Other" pct={3} visits="444" color="#60a5fa" />
+                    <div style={{ marginTop: 12 }}>
+                        {breakdowns.by_language.map((r, i) => (
+                            <LangRow key={i} name={r.label} pct={r.perc} visits={r.visits} color={COLORS[i % COLORS.length]} />
+                        ))}
                     </div>
                 </div>
             </div>
@@ -360,25 +358,25 @@ export default function AnalyticsDashboard() {
 ───────────────────────────────────────────────────────────── */
 const s: Record<string, React.CSSProperties> = {
     root: {
-        fontFamily: "'DM Sans','Segoe UI',sans-serif",
-        background: "#f4f5fb",
+        fontFamily: "'Inter','Segoe UI',sans-serif",
+        background: "#f8fafc",
         minHeight: "100vh",
-        padding: 16,
+        padding: 24,
         boxSizing: "border-box",
     },
     kpiRow: { display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12, marginBottom: 12 },
     chartsRow: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 },
     tablesRow: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 },
-    kpiCard: { background: "#fff", borderRadius: 14, padding: "16px 16px 10px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" },
-    chartCard: { background: "#fff", borderRadius: 14, padding: "18px 18px 14px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" },
-    tableCard: { background: "#fff", borderRadius: 14, padding: "16px 18px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" },
+    kpiCard: { background: "#fff", borderRadius: 14, padding: "18px 20px 12px", boxShadow: "0 1px 3px rgba(0,0,0,0.02)", border: '1px solid #f1f5f9' },
+    chartCard: { background: "#fff", borderRadius: 14, padding: "20px 24px 16px", boxShadow: "0 1px 3px rgba(0,0,0,0.02)", border: '1px solid #f1f5f9' },
+    tableCard: { background: "#fff", borderRadius: 14, padding: "20px 24px", boxShadow: "0 1px 3px rgba(0,0,0,0.02)", border: '1px solid #f1f5f9' },
     cardHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
-    cardLabel: { fontSize: 9, fontWeight: 700, letterSpacing: "0.09em", color: "#adb2c3", textTransform: "uppercase" },
-    arrow: { fontSize: 13, color: "#d1d5db" },
-    kpiValue: { fontSize: 30, fontWeight: 700, color: "#111827", letterSpacing: "-0.5px", lineHeight: 1.05, marginBottom: 6 },
-    badge: { display: "inline-flex", alignItems: "center", borderRadius: 4, padding: "2px 6px", fontSize: 9.5, fontWeight: 700, marginBottom: 4 },
-    kpiSub: { fontSize: 10, color: "#9ca3af", marginBottom: 4 },
+    cardLabel: { fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: "#94a3b8", textTransform: "uppercase" },
+    arrow: { fontSize: 13, color: "#cbd5e1" },
+    kpiValue: { fontSize: 32, fontWeight: 600, color: "#1e293b", letterSpacing: "-0.5px", lineHeight: 1.1, marginBottom: 4 },
+    badge: { display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "2px 8px", fontSize: 10, fontWeight: 700, marginBottom: 4 },
+    kpiSub: { fontSize: 11, color: "#94a3b8", marginBottom: 4, fontWeight: 500 },
     table: { width: "100%", borderCollapse: "collapse", marginTop: 4 },
-    th: { fontSize: 9, fontWeight: 700, color: "#6366f1", letterSpacing: "0.07em", textTransform: "uppercase", paddingBottom: 8, textAlign: "left", borderBottom: "1px solid #f3f4f6" },
-    td: { fontSize: 12, color: "#374151", padding: "8px 0", borderBottom: "1px solid #f9fafb" },
+    th: { fontSize: 10, fontWeight: 700, color: "#6366f1", letterSpacing: "0.07em", textTransform: "uppercase", paddingBottom: 8, textAlign: "left", borderBottom: "1px solid #f1f5f9" },
+    td: { fontSize: 13, color: "#475569", padding: "10px 0", borderBottom: "1px solid #f8fafc", fontWeight: 500 },
 };

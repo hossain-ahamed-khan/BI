@@ -1,384 +1,161 @@
 "use client";
-import { useState } from "react";
+import React, { useState, useMemo } from "react";
+import { useRange } from "@/components/range-context";
+import { useFBPerformanceData } from "@/hooks/use-metrics";
+import { 
+    FBTopItem, 
+    FBParetoItem, 
+    ProductSummaryMetric 
+} from "@/lib/types/api";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-interface SparkPoint { value: number }
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-interface TopItem {
-    rank: number;
-    name: string;
-    qty: number;
-    revenue: number;
-    vsLY: number;
+function formatEuro(value: number): string {
+    return `€${Math.round(value).toLocaleString("de-DE")}`;
 }
 
-interface TopWine {
-    rank: number;
-    name: string;
-    bottles: number;
-    revenue: number;
-    vsLY: number;
-}
-
-interface ParetoItem {
-    rank: number;
-    name: string;
-    category: string;
-    qty: number;
-    grossRevenue: number;
-    pctOfTotal: number;
-    cumulative: number;
-}
-
-// ─── Data ─────────────────────────────────────────────────────────────────────
-const foodCostPoints: SparkPoint[] = [
-    { value: 27.5 }, { value: 27.8 }, { value: 28.0 }, { value: 28.1 },
-    { value: 28.2 }, { value: 28.3 }, { value: 28.5 },
-];
-
-const drinkCostPoints: SparkPoint[] = [
-    { value: 19.0 }, { value: 18.8 }, { value: 18.6 }, { value: 18.5 },
-    { value: 18.4 }, { value: 18.3 }, { value: 18.2 },
-];
-
-const stockPoints: SparkPoint[] = [
-    { value: 40000 }, { value: 41000 }, { value: 42500 }, { value: 44000 },
-    { value: 46000 }, { value: 47000 }, { value: 48200 },
-];
-
-const purchasesPoints: SparkPoint[] = [
-    { value: 14000 }, { value: 14500 }, { value: 15200 }, { value: 15800 },
-    { value: 16500 }, { value: 17200 }, { value: 18000 },
-];
-
-const topDishes: TopItem[] = [
-    { rank: 1, name: "Black Cod Jacqueline", qty: 520, revenue: 10400, vsLY: 12.4 },
-    { rank: 2, name: "Wagyu Steak", qty: 180, revenue: 9000, vsLY: 8.6 },
-    { rank: 3, name: "Steak Tartare", qty: 370, revenue: 9000, vsLY: 5.2 },
-    { rank: 4, name: "Mariscada", qty: 142, revenue: 8520, vsLY: 3.1 },
-    { rank: 5, name: "Truffle Pasta", qty: 480, revenue: 8200, vsLY: 4.2 },
-    { rank: 6, name: "Foie Gras", qty: 440, revenue: 7040, vsLY: 9.4 },
-    { rank: 7, name: "Oysters G.", qty: 325, revenue: 7800, vsLY: 6.8 },
-    { rank: 8, name: "Ceviche", qty: 620, revenue: 6820, vsLY: 7.8 },
-    { rank: 9, name: "Tuna Tataki", qty: 310, revenue: 5580, vsLY: 5.8 },
-    { rank: 10, name: "Burrata", qty: 740, revenue: 5920, vsLY: 6.1 },
-];
-
-const topCocktails: TopItem[] = [
-    { rank: 1, name: "Jacqueline Signature", qty: 900, revenue: 13500, vsLY: 14.2 },
-    { rank: 2, name: "Spicy Margarita", qty: 750, revenue: 11250, vsLY: 9.8 },
-    { rank: 3, name: "Pornstar Martini", qty: 620, revenue: 9300, vsLY: 6.4 },
-    { rank: 4, name: "Negroni Sbagliato", qty: 580, revenue: 8120, vsLY: 4.8 },
-    { rank: 5, name: "Don Julio Paloma", qty: 420, revenue: 7140, vsLY: 18.6 },
-    { rank: 6, name: "Aperol Spritz", qty: 680, revenue: 6800, vsLY: 2.1 },
-    { rank: 7, name: "Espresso Martini", qty: 440, revenue: 6160, vsLY: 7.2 },
-    { rank: 8, name: "Old Fashioned", qty: 380, revenue: 5700, vsLY: 5.4 },
-    { rank: 9, name: "Mezcal Sour", qty: 310, revenue: 5270, vsLY: 12.8 },
-    { rank: 10, name: "Dry Martini", qty: 290, revenue: 4350, vsLY: 1.8 },
-];
-
-const topWines: TopWine[] = [
-    { rank: 1, name: "Dom Pérignon 2015", bottles: 48, revenue: 14400, vsLY: 18.2 },
-    { rank: 2, name: "Vega Sicilia Único", bottles: 36, revenue: 12600, vsLY: 8.4 },
-    { rank: 3, name: "Ruinart Blanc de Blancs", bottles: 30, revenue: 7500, vsLY: 5.6 },
-    { rank: 4, name: "Marqués de Murrieta Res.", bottles: 58, revenue: 6960, vsLY: 4.2 },
-    { rank: 5, name: "Chablis 1er Cru", bottles: 64, revenue: 6400, vsLY: 7.1 },
-    { rank: 6, name: "Albariño Rías Baixas", bottles: 72, revenue: 5760, vsLY: 9.8 },
-    { rank: 7, name: "Ribera del Duero RR", bottles: 60, revenue: 5400, vsLY: 3.6 },
-    { rank: 8, name: "Sancerre Blanc", bottles: 54, revenue: 5130, vsLY: 6.2 },
-    { rank: 9, name: "Priorat Les Terrasses", bottles: 50, revenue: 4500, vsLY: -1.2 },
-    { rank: 10, name: "Puligny-Montrachet", bottles: 38, revenue: 4180, vsLY: 11.4 },
-];
-
-const paretoItems: ParetoItem[] = [
-    { rank: 1, name: "Don Julio 1942", category: "Spirits", qty: 18, grossRevenue: 14400, pctOfTotal: 8.0, cumulative: 8.0 },
-    { rank: 2, name: "Dom Pérignon 2015", category: "Champagne", qty: 48, grossRevenue: 14400, pctOfTotal: 8.0, cumulative: 16.0 },
-    { rank: 3, name: "Jacqueline Signature", category: "Cocktail", qty: 900, grossRevenue: 13500, pctOfTotal: 7.5, cumulative: 23.5 },
-    { rank: 4, name: "Black Cod Jacqueline", category: "Food", qty: 520, grossRevenue: 10400, pctOfTotal: 6.1, cumulative: 29.6 },
-    { rank: 5, name: "Vega Sicilia Único", category: "Wine", qty: 36, grossRevenue: 12600, pctOfTotal: 5.8, cumulative: 35.4 },
-    { rank: 6, name: "Spicy Margarita", category: "Cocktail", qty: 750, grossRevenue: 11250, pctOfTotal: 5.2, cumulative: 40.6 },
-    { rank: 7, name: "Wagyu Steak", category: "Food", qty: 180, grossRevenue: 9000, pctOfTotal: 4.2, cumulative: 44.8 },
-    { rank: 8, name: "Steak Tartare", category: "Food", qty: 370, grossRevenue: 9000, pctOfTotal: 4.2, cumulative: 49.0 },
-    { rank: 9, name: "Pornstar Martini", category: "Cocktail", qty: 620, grossRevenue: 9300, pctOfTotal: 4.0, cumulative: 53.0 },
-    { rank: 10, name: "Negroni Sbagliato", category: "Cocktail", qty: 580, grossRevenue: 8120, pctOfTotal: 3.8, cumulative: 56.8 },
-    { rank: 11, name: "Mariscada", category: "Food", qty: 142, grossRevenue: 8520, pctOfTotal: 3.5, cumulative: 60.3 },
-    { rank: 12, name: "Don Julio Paloma", category: "Cocktail", qty: 420, grossRevenue: 7140, pctOfTotal: 3.3, cumulative: 63.6 },
-    { rank: 13, name: "Truffle Pasta", category: "Food", qty: 480, grossRevenue: 8200, pctOfTotal: 3.2, cumulative: 66.8 },
-    { rank: 14, name: "Ruinart Blanc de Blancs", category: "Wine", qty: 30, grossRevenue: 7500, pctOfTotal: 2.8, cumulative: 69.6 },
-    { rank: 15, name: "Foie Gras", category: "Food", qty: 440, grossRevenue: 7040, pctOfTotal: 2.5, cumulative: 72.1 },
-    { rank: 16, name: "Oysters G.", category: "Starters", qty: 325, grossRevenue: 7800, pctOfTotal: 2.2, cumulative: 74.3 },
-    { rank: 17, name: "Marqués de Murrieta Res.", category: "Wine", qty: 58, grossRevenue: 6960, pctOfTotal: 1.98, cumulative: 76.3 },
-    { rank: 18, name: "Ceviche", category: "Starters", qty: 620, grossRevenue: 6820, pctOfTotal: 1.59, cumulative: 88.6 },
-    { rank: 19, name: "Aperol Spritz", category: "Cocktail", qty: 680, grossRevenue: 6800, pctOfTotal: 1.58, cumulative: 90.2 },
-    { rank: 20, name: "Chablis 1er Cru", category: "Wine", qty: 64, grossRevenue: 6400, pctOfTotal: 1.49, cumulative: 91.7 },
-    { rank: 21, name: "Espresso Martini", category: "Cocktail", qty: 440, grossRevenue: 6160, pctOfTotal: 1.43, cumulative: 93.1 },
-    { rank: 22, name: "Burrata", category: "Starters", qty: 740, grossRevenue: 5920, pctOfTotal: 1.38, cumulative: 94.5 },
-    { rank: 23, name: "Albariño Rías Baixas", category: "Wine", qty: 72, grossRevenue: 5760, pctOfTotal: 1.34, cumulative: 95.8 },
-    { rank: 24, name: "Old Fashioned", category: "Cocktail", qty: 380, grossRevenue: 5700, pctOfTotal: 1.33, cumulative: 97.2 },
-    { rank: 25, name: "Tuna Tataki", category: "Food", qty: 310, grossRevenue: 5580, pctOfTotal: 1.3, cumulative: 98.5 },
-];
-
-// ─── Sparkline ────────────────────────────────────────────────────────────────
-const DAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+// ─── Sparkline (High Fidelity) ───────────────────────────────────────────────
 
 function Sparkline({
-    points, color, gradientId, yLabels,
+    data,
+    color,
+    fill = false,
+    width = 300,
+    height = 80,
+    xLabels,
 }: {
-    points: SparkPoint[];
+    data: number[];
     color: string;
-    gradientId: string;
-    yLabels: string[];
+    fill?: boolean;
+    width?: number;
+    height?: number;
+    xLabels?: string[];
 }) {
-    const totalW = 320;
-    const totalH = 80;
-    const padLeft = 4;
-    const padRight = 44; // room for y-axis labels on right
-    const padTop = 6;
-    const padBottom = 18; // room for x-axis labels
+    if (!data.length) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#cbd5e1' }}>No trend data</div>;
 
-    const chartW = totalW - padLeft - padRight;
-    const chartH = totalH - padTop - padBottom;
+    const padL = 4, padR = 40, padT = 6, padB = xLabels ? 18 : 4;
+    const chartW = width - padL - padR;
+    const chartH = height - padT - padB;
 
-    const vals = points.map(p => p.value);
-    const min = Math.min(...vals);
-    const max = Math.max(...vals);
+    const min = Math.min(...data);
+    const max = Math.max(...data, 1);
     const range = max - min || 1;
 
-    const coords = vals.map((v, i) => ({
-        x: padLeft + (i / (vals.length - 1)) * chartW,
-        y: padTop + chartH - ((v - min) / range) * chartH,
-    }));
+    const getY = (v: number) => padT + chartH - ((v - min) / range) * chartH;
+    const getX = (i: number) => padL + (i / Math.max(1, data.length - 1)) * chartW;
 
-    const linePath = coords
-        .map((c, i) => `${i === 0 ? "M" : "L"}${c.x.toFixed(2)},${c.y.toFixed(2)}`)
-        .join(" ");
+    const pts = data.map((v, i) => [getX(i), getY(v)]);
+    const linePath = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(2)},${p[1].toFixed(2)}`).join(" ");
+    const areaPath = `${linePath} L${pts[pts.length - 1][0].toFixed(2)},${(padT + chartH).toFixed(2)} L${pts[0][0].toFixed(2)},${(padT + chartH).toFixed(2)} Z`;
 
-    const areaPath =
-        linePath +
-        ` L${coords[coords.length - 1].x.toFixed(2)},${(padTop + chartH).toFixed(2)}` +
-        ` L${coords[0].x.toFixed(2)},${(padTop + chartH).toFixed(2)} Z`;
-
-    // y-axis label positions (top=max, mid, bottom=min)
-    const yPositions = [
-        { label: yLabels[0], y: padTop },
-        { label: yLabels[1], y: padTop + chartH / 2 },
-        { label: yLabels[2], y: padTop + chartH },
-    ];
+    const formatTick = (v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toFixed(1);
+    const ticks = [max, min];
 
     return (
-        <svg
-            width="100%"
-            viewBox={`0 0 ${totalW} ${totalH}`}
-            style={{ display: "block", overflow: "visible" }}
-        >
+        <svg width="100%" viewBox={`0 0 ${width} ${height}`} style={{ overflow: "visible", display: "block" }}>
             <defs>
-                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={color} stopOpacity="0.22" />
-                    <stop offset="100%" stopColor={color} stopOpacity="0.03" />
+                <linearGradient id={`grad-${color.replace("#", "")}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={color} stopOpacity={0.18} />
+                    <stop offset="100%" stopColor={color} stopOpacity={0.02} />
                 </linearGradient>
             </defs>
-
-            {/* Area fill */}
-            <path d={areaPath} fill={`url(#${gradientId})`} />
-
-            {/* Line */}
-            <path
-                d={linePath}
-                fill="none"
-                stroke={color}
-                strokeWidth="1.8"
-                strokeLinejoin="round"
-                strokeLinecap="round"
-            />
-
-            {/* Dots */}
-            {coords.map((c, i) => (
-                <circle key={i} cx={c.x} cy={c.y} r="3" fill={color} />
+            {fill && <path d={areaPath} fill={`url(#grad-${color.replace("#", "")})`} />}
+            <line x1={padL} y1={padT + chartH} x2={width - padR} y2={padT + chartH} stroke="#eceff3" strokeWidth={1} />
+            <path d={linePath} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+            {pts.map((p, i) => (
+                <circle key={i} cx={p[0]} cy={p[1]} r={2.5} fill="#fff" stroke={color} strokeWidth={1.5} />
             ))}
-
-            {/* X-axis day labels */}
-            {coords.map((c, i) => (
-                <text
-                    key={i}
-                    x={c.x}
-                    y={totalH - 2}
-                    textAnchor="middle"
-                    fontSize="8"
-                    fill="#c4c9d4"
-                    fontFamily="DM Sans, sans-serif"
-                >
-                    {DAYS[i]}
-                </text>
+            {xLabels && xLabels.map((lbl, i) => (
+                <text key={i} x={getX(i)} y={height - 2} fontSize={9} fill="#b0b7c3" textAnchor="middle" fontWeight="600">{lbl}</text>
             ))}
-
-            {/* Y-axis labels on right */}
-            {yPositions.map((yp, i) => (
-                <text
-                    key={i}
-                    x={padLeft + chartW + 6}
-                    y={yp.y + 3}
-                    fontSize="8"
-                    fill="#c4c9d4"
-                    fontFamily="DM Sans, sans-serif"
-                >
-                    {yp.label}
-                </text>
+            {ticks.map((t, i) => (
+                <text key={i} x={width - 2} y={getY(t) + 3} fontSize={8.5} fill="#cbd5e1" textAnchor="end" fontWeight="700">{formatTick(t)}</text>
             ))}
         </svg>
     );
 }
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
+
 function KpiCard({
-    title, value, subtitle, badge, badgeColor, points, lineColor, gradientId, yLabels,
+    title, value, subtitle, badge, badgeColor, trend = [], color, xLabels,
 }: {
     title: string;
     value: string;
     subtitle?: string;
     badge?: string;
     badgeColor?: string;
-    points: SparkPoint[];
-    lineColor: string;
-    gradientId: string;
-    yLabels: string[];
+    trend: number[];
+    color: string;
+    xLabels?: string[];
 }) {
     return (
         <div style={{
-            background: "#fff",
-            borderRadius: 12,
-            padding: "20px 22px 12px",
-            boxShadow: "0 1px 4px rgba(0,0,0,.06)",
-            display: "flex",
-            flexDirection: "column",
-            gap: 3,
-            minWidth: 0,
-            flex: 1,
+            background: "#fff", borderRadius: 16, padding: "20px 22px 12px",
+            border: "1px solid #f1f5f9", boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
+            display: "flex", flexDirection: "column", gap: 3, minWidth: 0, flex: 1,
         }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", color: "#9ca3af", textTransform: "uppercase" }}>
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: "#94a3b8", textTransform: "uppercase" }}>
                     {title}
                 </span>
-                <span style={{ fontSize: 11, color: "#9ca3af" }}>→</span>
+                <span style={{ fontSize: 11, color: "#cbd5e1" }}>→</span>
             </div>
-            <div style={{ fontSize: 32, fontWeight: 300, color: "#111", lineHeight: 1.1 }}>{value}</div>
-            {badge && (
-                <div style={{ fontSize: 11, color: badgeColor ?? "#22c55e", fontWeight: 500 }}>{badge}</div>
-            )}
-            {subtitle && (
-                <div style={{ fontSize: 11, color: "#9ca3af" }}>{subtitle}</div>
-            )}
-            <div style={{ marginTop: 6 }}>
-                <Sparkline points={points} color={lineColor} gradientId={gradientId} yLabels={yLabels} />
+            <div style={{ fontSize: 32, fontWeight: 300, color: "#1e293b", lineHeight: 1.1 }}>{value}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, margin: "2px 0" }}>
+                {badge && (
+                    <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: 20, background: `${badgeColor || color}15`, color: badgeColor || color, fontSize: 11, fontWeight: 700 }}>
+                        {badge}
+                    </span>
+                )}
+                {subtitle && <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 500 }}>{subtitle}</span>}
+            </div>
+            <div style={{ marginTop: 8 }}>
+                <Sparkline data={trend} color={color} fill xLabels={xLabels} />
             </div>
         </div>
     );
 }
 
 // ─── Rank Badge ───────────────────────────────────────────────────────────────
-const rankColors: Record<number, string> = {
-    1: "#ef4444", 2: "#f97316", 3: "#3b82f6",
-};
+
+const rankColors: Record<number, string> = { 1: "#ef4444", 2: "#f97316", 3: "#3b82f6" };
 function RankBadge({ rank }: { rank: number }) {
-    const color = rankColors[rank] ?? "#9ca3af";
-    return (
-        <span style={{ fontWeight: 700, color, minWidth: 20, display: "inline-block" }}>
-            {rank}
-        </span>
-    );
+    const color = rankColors[rank] ?? "#94a3b8";
+    return <span style={{ fontWeight: 700, color, minWidth: 20, display: "inline-block" }}>{rank}</span>;
 }
 
-// ─── VS LY Badge ─────────────────────────────────────────────────────────────
-function VsLY({ value }: { value: number }) {
-    const color = value >= 0 ? "#22c55e" : "#ef4444";
-    return (
-        <span style={{
-            fontSize: 11, fontWeight: 600, color,
-            background: value >= 0 ? "#f0fdf4" : "#fef2f2",
-            padding: "2px 6px", borderRadius: 4,
-        }}>
-            {value >= 0 ? "+" : ""}{value}%
-        </span>
-    );
-}
+// ─── Top Table ────────────────────────────────────────────────────────────────
 
-// ─── Top Items Table ──────────────────────────────────────────────────────────
-function TopItemsTable({
-    title, items, colHeader = "QTY",
-}: {
-    title: string;
-    items: TopItem[];
-    colHeader?: string;
-}) {
+function TopTable({ title, items, qtyLabel = "QTY" }: { title: string; items: FBTopItem[]; qtyLabel?: string }) {
     return (
-        <div style={{
-            background: "#fff", borderRadius: 12,
-            boxShadow: "0 1px 4px rgba(0,0,0,.06)",
-            padding: "18px 20px", flex: 1, minWidth: 0,
-        }}>
+        <div style={{ background: "#fff", borderRadius: 16, padding: "18px 20px", border: "1px solid #f1f5f9", boxShadow: "0 1px 3px rgba(0,0,0,0.02)", flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: "#9ca3af", textTransform: "uppercase" }}>
-                    {title}
-                </span>
-                <span style={{ fontSize: 11, color: "#9ca3af" }}>→</span>
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: "#94a3b8", textTransform: "uppercase" }}>{title}</span>
+                <span style={{ fontSize: 11, color: "#cbd5e1" }}>→</span>
             </div>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
-                    <tr style={{ color: "#9ca3af", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    <tr style={{ color: "#94a3b8", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
                         <th style={{ textAlign: "left", paddingBottom: 8, width: 24 }}>#</th>
                         <th style={{ textAlign: "left", paddingBottom: 8 }}>ITEM</th>
-                        <th style={{ textAlign: "right", paddingBottom: 8 }}>{colHeader}</th>
+                        <th style={{ textAlign: "right", paddingBottom: 8 }}>{qtyLabel}</th>
                         <th style={{ textAlign: "right", paddingBottom: 8 }}>REVENUE</th>
                         <th style={{ textAlign: "right", paddingBottom: 8 }}>VS LY</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {items.map(item => (
-                        <tr key={item.rank} style={{ borderTop: "1px solid #f3f4f6" }}>
-                            <td style={{ padding: "8px 0" }}><RankBadge rank={item.rank} /></td>
-                            <td style={{ padding: "8px 4px", color: "#111", fontWeight: 400 }}>{item.name}</td>
-                            <td style={{ textAlign: "right", color: "#6b7280" }}>{item.qty.toLocaleString()}</td>
-                            <td style={{ textAlign: "right", color: "#6b7280" }}>€ {item.revenue.toLocaleString()}</td>
-                            <td style={{ textAlign: "right" }}><VsLY value={item.vsLY} /></td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    );
-}
-
-// ─── Top Wines Table ─────────────────────────────────────────────────────────
-function TopWinesTable({ wines }: { wines: TopWine[] }) {
-    return (
-        <div style={{
-            background: "#fff", borderRadius: 12,
-            boxShadow: "0 1px 4px rgba(0,0,0,.06)",
-            padding: "18px 20px", flex: 1, minWidth: 0,
-        }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: "#9ca3af", textTransform: "uppercase" }}>
-                    Top 10 Wines
-                </span>
-                <span style={{ fontSize: 11, color: "#9ca3af" }}>→</span>
-            </div>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                <thead>
-                    <tr style={{ color: "#9ca3af", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                        <th style={{ textAlign: "left", paddingBottom: 8, width: 24 }}>#</th>
-                        <th style={{ textAlign: "left", paddingBottom: 8 }}>WINE</th>
-                        <th style={{ textAlign: "right", paddingBottom: 8 }}>BOTTLES</th>
-                        <th style={{ textAlign: "right", paddingBottom: 8 }}>REVENUE</th>
-                        <th style={{ textAlign: "right", paddingBottom: 8 }}>VS LY</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {wines.map(w => (
-                        <tr key={w.rank} style={{ borderTop: "1px solid #f3f4f6" }}>
-                            <td style={{ padding: "8px 0" }}><RankBadge rank={w.rank} /></td>
-                            <td style={{ padding: "8px 4px", color: "#111" }}>{w.name}</td>
-                            <td style={{ textAlign: "right", color: "#6b7280" }}>{w.bottles}</td>
-                            <td style={{ textAlign: "right", color: "#6b7280" }}>€ {w.revenue.toLocaleString()}</td>
-                            <td style={{ textAlign: "right" }}><VsLY value={w.vsLY} /></td>
+                    {items.map((item, i) => (
+                        <tr key={i} style={{ borderTop: "1px solid #f8fafc" }}>
+                            <td style={{ padding: "8px 0" }}><RankBadge rank={i + 1} /></td>
+                            <td style={{ padding: "8px 4px", color: "#1e293b", fontWeight: 500 }}>{item.name}</td>
+                            <td style={{ textAlign: "right", color: "#64748b", fontWeight: 600 }}>{item.qty.toLocaleString()}</td>
+                            <td style={{ textAlign: "right", color: "#1e293b", fontWeight: 600 }}>{formatEuro(item.rev)}</td>
+                            <td style={{ textAlign: "right" }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: (item.vs_ly || 0) >= 0 ? "#10b981" : "#ef4444" }}>
+                                    {(item.vs_ly || 0) >= 0 ? "+" : ""}{item.vs_ly || 0}%
+                                </span>
+                            </td>
                         </tr>
                     ))}
                 </tbody>
@@ -388,96 +165,67 @@ function TopWinesTable({ wines }: { wines: TopWine[] }) {
 }
 
 // ─── Pareto Table ─────────────────────────────────────────────────────────────
-function ParetoTable({ items }: { items: ParetoItem[] }) {
-    const [page, setPage] = useState(1);
-    const perPage = 25;
-    const totalPages = Math.ceil(items.length / perPage);
-    const visible = items.slice((page - 1) * perPage, page * perPage);
+
+function ParetoTable({ items, totalCount, currentPage, pageSize, onPageChange, onPageSizeChange }: { items: FBParetoItem[], totalCount: number, currentPage: number, pageSize: number, onPageChange: (p: number) => void, onPageSizeChange: (s: number) => void }) {
+    const totalPages = Math.ceil(totalCount / pageSize);
+    const offset = (currentPage - 1) * pageSize;
 
     return (
-        <div style={{
-            background: "#fff", borderRadius: 12,
-            boxShadow: "0 1px 4px rgba(0,0,0,.06)",
-            padding: "18px 20px",
-        }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: "#9ca3af", textTransform: "uppercase" }}>
-                    Revenue Pareto Analysis – 80/20 Rule
-                </span>
-                <span style={{ fontSize: 11, color: "#9ca3af" }}>
-                    Sorted by revenue · Cumulative % recalculated across full dataset
-                </span>
+        <div style={{ background: "#fff", borderRadius: 16, padding: "24px", border: "1px solid #f1f5f9", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: "#94a3b8", textTransform: "uppercase" }}>Revenue Pareto Analysis – 80/20 Rule</span>
+                <span style={{ fontSize: 11, color: "#cbd5e1" }}>Sorted by revenue · Cumulative % recalculated across full dataset</span>
             </div>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                <thead>
-                    <tr style={{ color: "#9ca3af", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                        <th style={{ textAlign: "left", paddingBottom: 8, width: 24 }}>#</th>
-                        <th style={{ textAlign: "left", paddingBottom: 8 }}>ITEM ↑↓</th>
-                        <th style={{ textAlign: "left", paddingBottom: 8 }}>CATEGORY</th>
-                        <th style={{ textAlign: "right", paddingBottom: 8 }}>QTY ↑↓</th>
-                        <th style={{ textAlign: "right", paddingBottom: 8 }}>GROSS REVENUE ↓</th>
-                        <th style={{ textAlign: "right", paddingBottom: 8 }}>% OF TOTAL ↑↓</th>
-                        <th style={{ textAlign: "right", paddingBottom: 8 }}>CUMULATIVE %</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {visible.map(item => {
-                        const cumColor = item.cumulative <= 80 ? "#22c55e" : "#ef4444";
-                        return (
-                            <tr key={item.rank} style={{ borderTop: "1px solid #f3f4f6" }}>
-                                <td style={{ padding: "9px 0", color: item.rank <= 3 ? rankColors[item.rank] : "#111", fontWeight: item.rank <= 3 ? 700 : 400 }}>
-                                    {item.rank}
+            <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                    <thead>
+                        <tr style={{ color: "#94a3b8", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                            <th style={{ textAlign: "left", paddingBottom: 10, width: 24 }}>#</th>
+                            <th style={{ textAlign: "left", paddingBottom: 10 }}>ITEM ↑↓</th>
+                            <th style={{ textAlign: "left", paddingBottom: 10 }}>CATEGORY</th>
+                            <th style={{ textAlign: "right", paddingBottom: 10 }}>QTY ↑↓</th>
+                            <th style={{ textAlign: "right", paddingBottom: 10 }}>GROSS REVENUE ↓</th>
+                            <th style={{ textAlign: "right", paddingBottom: 10 }}>% OF TOTAL ↑↓</th>
+                            <th style={{ textAlign: "right", paddingBottom: 10 }}>CUMULATIVE %</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {items.map((item, i) => (
+                            <tr key={i} style={{ borderTop: "1px solid #f8fafc" }}>
+                                <td style={{ padding: "12px 0", color: "#1e293b" }}>{offset + i + 1}</td>
+                                <td style={{ padding: "12px 4px", color: "#1e293b", fontWeight: 600 }}>{item.name}</td>
+                                <td style={{ color: "#64748b" }}>
+                                    <span style={{ background: "#f1f5f9", padding: "2px 8px", borderRadius: 4, fontSize: 11, fontWeight: 600 }}>{item.category}</span>
                                 </td>
-                                <td style={{ padding: "9px 4px", color: "#111" }}>{item.name}</td>
-                                <td style={{ color: "#9ca3af" }}>{item.category}</td>
-                                <td style={{ textAlign: "right", color: "#6b7280" }}>{item.qty.toLocaleString()}</td>
-                                <td style={{ textAlign: "right", color: "#6b7280" }}>€ {item.grossRevenue.toLocaleString()}</td>
-                                <td style={{ textAlign: "right", color: "#6b7280" }}>{item.pctOfTotal}%</td>
-                                <td style={{ textAlign: "right", fontWeight: 600, color: cumColor }}>{item.cumulative}%</td>
+                                <td style={{ textAlign: "right", color: "#64748b" }}>{item.qty}</td>
+                                <td style={{ textAlign: "right", color: "#1e293b", fontWeight: 600 }}>{formatEuro(item.gross_revenue)}</td>
+                                <td style={{ textAlign: "right", color: "#64748b" }}>{item.perc_of_total}%</td>
+                                <td style={{ textAlign: "right", fontWeight: 700, color: item.cumulative_perc <= 80 ? "#10b981" : "#f43f5e" }}>{item.cumulative_perc}%</td>
                             </tr>
-                        );
-                    })}
-                </tbody>
-            </table>
-
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            
             {/* Pagination */}
-            <div style={{
-                display: "flex", justifyContent: "space-between", alignItems: "center",
-                marginTop: 16, fontSize: 12, color: "#9ca3af",
-            }}>
-                <span>Show <strong>25</strong> per page</span>
-                <span>1–{visible.length} of {items.length} items</span>
-                <div style={{ display: "flex", gap: 4 }}>
-                    <button
-                        onClick={() => setPage(p => Math.max(1, p - 1))}
-                        disabled={page === 1}
-                        style={{
-                            width: 28, height: 28, borderRadius: 6,
-                            border: "1px solid #e5e7eb", background: "#fff",
-                            cursor: page === 1 ? "default" : "pointer",
-                            color: page === 1 ? "#d1d5db" : "#374151",
-                        }}>‹</button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                        <button
-                            key={p}
-                            onClick={() => setPage(p)}
-                            style={{
-                                width: 28, height: 28, borderRadius: 6,
-                                border: p === page ? "1.5px solid #374151" : "1px solid #e5e7eb",
-                                background: p === page ? "#f9fafb" : "#fff",
-                                fontWeight: p === page ? 700 : 400,
-                                cursor: "pointer", color: "#374151",
-                            }}>{p}</button>
-                    ))}
-                    <button
-                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                        disabled={page === totalPages}
-                        style={{
-                            width: 28, height: 28, borderRadius: 6,
-                            border: "1px solid #e5e7eb", background: "#fff",
-                            cursor: page === totalPages ? "default" : "pointer",
-                            color: page === totalPages ? "#d1d5db" : "#374151",
-                        }}>›</button>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 20, paddingTop: 16, borderTop: "1.5px solid #f1f5f9" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#64748b", fontSize: 12 }}>
+                    <span>Show</span>
+                    <select 
+                        style={{ border: "1px solid #e2e8f0", borderRadius: 8, padding: "4px 8px", outline: 'none' }}
+                        value={pageSize}
+                        onChange={(e) => onPageSizeChange(Number(e.target.value))}
+                    >
+                        {[10, 25, 50, 100].map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                    <span>per page</span>
+                </div>
+                <div style={{ color: "#64748b", fontSize: 12, fontWeight: 600 }}>
+                    {offset + 1}–{Math.min(offset + pageSize, totalCount)} of {totalCount} items
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                    <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} style={{ width: 32, height: 32, borderRadius: 8, border: "1px solid #e2e8f0", background: "#fff", cursor: currentPage === 1 ? 'not-allowed' : "pointer", color: currentPage === 1 ? '#cbd5e1' : '#475569' }}>‹</button>
+                    <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} style={{ width: 32, height: 32, borderRadius: 8, border: "1px solid #e2e8f0", background: "#fff", cursor: currentPage === totalPages ? 'not-allowed' : "pointer", color: currentPage === totalPages ? '#cbd5e1' : '#475569' }}>›</button>
                 </div>
             </div>
         </div>
@@ -485,68 +233,91 @@ function ParetoTable({ items }: { items: ParetoItem[] }) {
 }
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
-export default function RestaurantDashboard() {
+
+export default function FBPerformanceDashboard() {
+    const { activeRange, customStart, customEnd } = useRange();
+    const [pageSize, setPageSize] = useState(25);
+    const [currentPage, setCurrentPage] = useState(1);
+
+    const offset = (currentPage - 1) * pageSize;
+    const { data, isLoading, error } = useFBPerformanceData(activeRange, customStart, customEnd, pageSize, offset);
+
+    const xLabels = useMemo(() => {
+        return ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+    }, []);
+
+    if (isLoading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading F&B Performance Analysis...</div>;
+    if (error || !data) return <div style={{ padding: 40, textAlign: 'center', color: 'red' }}>Error loading data.</div>;
+
+    const { summary, top_10, pareto_table } = data;
+
     return (
-        <div style={{
-            fontFamily: "'DM Sans', 'Helvetica Neue', Arial, sans-serif",
-            background: "#f5f6f8",
-            minHeight: "100vh",
-            padding: "24px",
-            boxSizing: "border-box",
-        }}>
-            {/* KPI Cards */}
-            <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
+        <div style={{ fontFamily: "'Inter', sans-serif", background: "#f8fafc", minHeight: "100vh", padding: "24px" }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <h1 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a' }}>F&B Operational Performance</h1>
+                <div style={{ fontSize: 11, color: '#64748b', background: '#fff', padding: '6px 12px', borderRadius: 99, border: '1px solid #e2e8f0' }}>
+                    Data period: <span style={{ fontWeight: 700, color: '#6366f1', textTransform: 'capitalize' }}>{activeRange}</span>
+                </div>
+            </div>
+
+            {/* KPI Row */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 16 }}>
                 <KpiCard
                     title="Food Cost %"
-                    value="28.5%"
-                    subtitle="vs LY Goal: 28%"
-                    badge="Target: 28%"
-                    badgeColor="#9ca3af"
-                    points={foodCostPoints}
-                    lineColor="#f59e0b"
-                    gradientId="grad-food"
-                    yLabels={["28.5", "28.0", "27.5"]}
+                    value={`${summary.food_cost_perc.value}%`}
+                    subtitle={`Target: ${summary.food_cost_perc.target}%`}
+                    badge={`${(summary.food_cost_perc.value as number - summary.food_cost_perc.target!).toFixed(1)}pp vs Goal`}
+                    badgeColor={summary.food_cost_perc.value as number > summary.food_cost_perc.target! ? "#ef4444" : "#10b981"}
+                    trend={[27.5, 27.8, 28.0, 28.1, 28.2, 28.3, summary.food_cost_perc.value as number]}
+                    color="#f59e0b"
+                    xLabels={xLabels}
                 />
                 <KpiCard
                     title="Drink Cost %"
-                    value="18.2%"
-                    badge="On target"
-                    subtitle="vs LY Goal: 18%"
-                    points={drinkCostPoints}
-                    lineColor="#10b981"
-                    gradientId="grad-drink"
-                    yLabels={["19.0", "18.5", "18.0"]}
+                    value={`${summary.drink_cost_perc.value}%`}
+                    subtitle={`Target: ${summary.drink_cost_perc.target}%`}
+                    badge="On Target"
+                    badgeColor="#10b981"
+                    trend={[19.0, 18.8, 18.6, 18.5, 18.4, 18.3, summary.drink_cost_perc.value as number]}
+                    color="#10b981"
+                    xLabels={xLabels}
                 />
                 <KpiCard
                     title="Stock Value"
-                    value="€ 48.200"
+                    value={formatEuro(summary.stock_value.value as number)}
                     subtitle="Frozen liquidity"
-                    points={stockPoints}
-                    lineColor="#8b5cf6"
-                    gradientId="grad-stock"
-                    yLabels={["50,000", "45,000", "40,000"]}
+                    trend={summary.stock_value.trend as number[]}
+                    color="#8b5cf6"
+                    xLabels={xLabels}
                 />
                 <KpiCard
-                    title="Purchases (Month)"
-                    value="€ 18.000"
-                    badge="▲ +3.2% vs LM"
+                    title="Purchases"
+                    value={formatEuro(summary.purchases_month.value as number)}
+                    subtitle="Total this period"
+                    badge={`▲ +${summary.purchases_month.growth_lm}% vs LM`}
                     badgeColor="#ef4444"
-                    points={purchasesPoints}
-                    lineColor="#f97316"
-                    gradientId="grad-purchases"
-                    yLabels={["18,000", "16,000", "14,000"]}
+                    trend={summary.purchases_month.trend as number[]}
+                    color="#f97316"
+                    xLabels={xLabels}
                 />
             </div>
 
-            {/* Top 10 Tables */}
-            <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
-                <TopItemsTable title="Top 10 Dishes" items={topDishes} colHeader="QTY" />
-                <TopItemsTable title="Top 10 Cocktails" items={topCocktails} colHeader="QTY" />
-                <TopWinesTable wines={topWines} />
+            {/* Top 10 Row */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 16 }}>
+                <TopTable title="Top 10 Dishes" items={top_10.dishes} />
+                <TopTable title="Top 10 Cocktails" items={top_10.cocktails} />
+                <TopTable title="Top 10 Wines" items={top_10.wines} qtyLabel="BTLS" />
             </div>
 
-            {/* Pareto */}
-            <ParetoTable items={paretoItems} />
+            {/* Pareto Table */}
+            <ParetoTable 
+                items={pareto_table.data}
+                totalCount={pareto_table.total_count}
+                currentPage={currentPage}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+            />
         </div>
     );
 }

@@ -1,443 +1,283 @@
 "use client";
+import React, { useMemo } from "react";
 import {
-    Area,
-    LineChart,
-    Line,
     ResponsiveContainer,
     Tooltip,
     YAxis,
+    CartesianGrid,
+    Area,
+    AreaChart,
+    XAxis,
 } from "recharts";
+import { useRange } from "@/components/range-context";
+import { useTips } from "@/hooks/use-metrics";
+import { ProductSummaryMetric } from "@/lib/types/api";
 
-// --- Data ---
-const weekDays = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const totalTipsData = [
-    { day: "Mo", value: 48 },
-    { day: "Tu", value: 52 },
-    { day: "We", value: 55 },
-    { day: "Th", value: 50 },
-    { day: "Fr", value: 58 },
-    { day: "Sa", value: 68 },
-    { day: "Su", value: 75 },
-];
-
-const avgTipData = [
-    { day: "Mo", value: 2.4 },
-    { day: "Tu", value: 2.6 },
-    { day: "We", value: 2.7 },
-    { day: "Th", value: 2.5 },
-    { day: "Fr", value: 2.8 },
-    { day: "Sa", value: 3.0 },
-    { day: "Su", value: 2.9 },
-];
-
-const tipRateData = [
-    { day: "Mo", value: 4.1 },
-    { day: "Tu", value: 4.3 },
-    { day: "We", value: 4.4 },
-    { day: "Th", value: 4.2 },
-    { day: "Fr", value: 4.5 },
-    { day: "Sa", value: 5.0 },
-    { day: "Su", value: 4.8 },
-];
-
-const cashTipsData = [
-    { day: "Mo", value: 180 },
-    { day: "Tu", value: 200 },
-    { day: "We", value: 155 },
-    { day: "Th", value: 190 },
-    { day: "Fr", value: 175 },
-    { day: "Sa", value: 185 },
-    { day: "Su", value: 195 },
-];
-
-const areaData = [
-    { area: "El Comedor", total: "€ 2,840", avg: "€ 3.20", rate: "4.4%" },
-    { area: "Jazz Club", total: "€ 1,120", avg: "€ 2.80", rate: "4.1%" },
-    { area: "Cocktail Bar", total: "€ 1,860", avg: "€ 3.80", rate: "5.0%" },
-    { area: "Private Club", total: "€ 1,640", avg: "€ 4.20", rate: "4.4%" },
-    { area: "La Barra Jap.", total: "€ 780", avg: "€ 2.40", rate: "4.2%" },
-];
-
-// --- Sub-components ---
-
-interface MiniChartProps {
-    data: { day: string; value: number }[];
-    color: string;
-    domain?: [number, number];
-    showArea?: boolean;
+function formatEuro(value: number): string {
+    return `€ ${value.toLocaleString("de-DE")}`;
 }
 
-function MiniChart({ data, color, domain, showArea = true }: MiniChartProps) {
-    const gradientId = `mini-area-${color.replace("#", "")}`;
+// ─── Sub-components ─────────────────────────────────────────────────────────────
+
+const CustomMiniTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+        return (
+            <div style={{ background: "#1e293b", color: "#fff", padding: "4px 8px", borderRadius: "6px", fontSize: "10px", fontWeight: 600, textAlign: "center", position: "relative" }}>
+                <div style={{ color: "#94a3b8", marginBottom: "2px" }}>{label}</div>
+                <div>{payload[0].value.toFixed(2)}</div>
+                <div style={{ position: "absolute", bottom: "-4px", left: "50%", transform: "translateX(-50%)", width: "0", height: "0", borderLeft: "4px solid transparent", borderRight: "4px solid transparent", borderTop: "4px solid #1e293b" }} />
+            </div>
+        );
+    }
+    return null;
+};
+
+function MiniChart({
+    metric,
+    color,
+    xLabels,
+}: {
+    metric: ProductSummaryMetric;
+    color: string;
+    xLabels: string[];
+}) {
+    const values = metric.trend.map(t => t.value);
+    if (values.length === 0) {
+        return <div style={{ height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#cbd5e1' }}>No trend data</div>;
+    }
+
+    const data = metric.trend.map((t, i) => ({ 
+        d: xLabels[i] || '', 
+        value: t.value 
+    }));
+    
+    const max = Math.max(...values, 1);
+    const min = Math.min(...values);
+    const ticks = [Math.round(min), Math.round(max)];
 
     return (
-        <div style={{ width: "100%", height: 76, marginTop: 6 }}>
-            <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={data} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
-                    <defs>
-                        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor={color} stopOpacity={0.2} />
-                            <stop offset="100%" stopColor={color} stopOpacity={0.02} />
-                        </linearGradient>
-                    </defs>
-                    {domain && (
-                        <YAxis
-                            domain={domain}
-                            orientation="right"
-                            axisLine={false}
-                            tickLine={false}
-                            tick={{ fontSize: 10, fill: "#9ca3af" }}
-                            width={24}
-                        />
-                    )}
-                    <Tooltip
-                        cursor={false}
-                        contentStyle={{
-                            background: "#fff",
-                            border: "1px solid #e5e7eb",
-                            borderRadius: 6,
-                            fontSize: 11,
-                            padding: "3px 8px",
-                        }}
-                        itemStyle={{ color: "#374151" }}
-                        labelStyle={{ color: "#9ca3af", fontSize: 10 }}
-                    />
-                    {showArea && (
-                        <Area
-                            type="monotone"
-                            dataKey="value"
-                            stroke="none"
-                            fill={`url(#${gradientId})`}
-                        />
-                    )}
-                    <Line
-                        type="monotone"
-                        dataKey="value"
-                        stroke={color}
-                        strokeWidth={1.7}
-                        dot={{ r: 2.1, fill: color, stroke: "#fff", strokeWidth: 1 }}
-                        activeDot={{ r: 3.2, fill: color, stroke: "#fff", strokeWidth: 1.5 }}
-                    />
-                </LineChart>
-            </ResponsiveContainer>
-            {/* Day labels */}
-            <div
-                style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    paddingLeft: 4,
-                    paddingRight: 4,
-                    marginTop: -1,
-                }}
-            >
-                {weekDays.map((d) => (
-                    <span key={d} style={{ fontSize: 9, color: "#9ca3af" }}>
-                        {d}
-                    </span>
-                ))}
-            </div>
-        </div>
+        <ResponsiveContainer width="100%" height={80}>
+            <AreaChart data={data} margin={{ top: 4, right: 14, left: 10, bottom: 0 }}>
+                <defs>
+                    <linearGradient id={`grad-${color.replace('#','')}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={color} stopOpacity={0.18} />
+                        <stop offset="95%" stopColor={color} stopOpacity={0.02} />
+                    </linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} horizontal stroke="#eceef2" strokeWidth={1} />
+                <XAxis 
+                    dataKey="d" 
+                    tick={{ fontSize: 9, fill: "#cbd5e1", fontWeight: 600 }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval={0}
+                    padding={{ left: 5, right: 5 }}
+                    dy={10}
+                />
+                <YAxis
+                    domain={[min * 0.9, max * 1.1]}
+                    ticks={ticks}
+                    orientation="right"
+                    axisLine={false}
+                    tickLine={false}
+                    width={32}
+                    tick={{ fontSize: 10, fill: "#b8bec9" }}
+                />
+                <Tooltip content={<CustomMiniTooltip />} position={{ y: -20 }} />
+                <Area
+                    type="monotone"
+                    dataKey="value"
+                    stroke={color}
+                    strokeWidth={1.7}
+                    fill={`url(#grad-${color.replace('#','')})`}
+                    dot={{ r: 2.5, fill: color, stroke: "#fff", strokeWidth: 1 }}
+                    activeDot={{ r: 4 }}
+                />
+            </AreaChart>
+        </ResponsiveContainer>
     );
 }
 
-interface KPICardProps {
-    label: string;
-    value: string;
-    badge: string;
-    badgeColor: string;
-    sub: string;
-    data: { day: string; value: number }[];
-    lineColor: string;
-    domain?: [number, number];
-}
-
-function KPICard({
+function StatCard({
     label,
     value,
-    badge,
-    badgeColor,
     sub,
-    data,
-    lineColor,
-    domain,
-}: KPICardProps) {
+    metric,
+    color,
+    xLabels,
+    isCurrency = true,
+    suffix = "",
+}: {
+    label: string;
+    value: number | string;
+    sub: string;
+    metric: ProductSummaryMetric;
+    color: string;
+    xLabels: string[];
+    isCurrency?: boolean;
+    suffix?: string;
+}) {
     return (
-        <div style={styles.card}>
-            <p style={styles.cardLabel}>{label}</p>
-            <p style={styles.cardValue}>{value}</p>
-            {badge ? (
-                <span style={{ ...styles.badge, color: badgeColor }}>
-                    <span style={{ marginRight: 2 }}>▲</span>
-                    {badge}
-                </span>
-            ) : null}
-            <p style={styles.cardSub}>{sub}</p>
-            <MiniChart data={data} color={lineColor} domain={domain} />
+        <div
+            style={{
+                background: "#fff",
+                borderRadius: 16,
+                padding: "24px 28px 16px",
+                flex: 1,
+                minWidth: 0,
+                boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+            }}
+        >
+            <span style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "#aaa", fontWeight: 700 }}>
+                {label}
+            </span>
+            <span style={{ fontSize: 32, fontWeight: 400, color: "#1e293b", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+                {typeof value === 'number' ? (isCurrency ? formatEuro(value) : value.toLocaleString()) : value}{suffix}
+            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, margin: "4px 0 8px" }}>
+                <span style={{ fontSize: 11, color: "#10b981", fontWeight: 600 }}>{sub}</span>
+            </div>
+            <MiniChart metric={metric} color={color} xLabels={xLabels} />
         </div>
     );
 }
 
-// --- Main Dashboard ---
+// ─── Main Component ───────────────────────────────────────────────────────────
+
 export default function TipsDashboard() {
+    const { activeRange, customStart, customEnd } = useRange();
+    const { data, isLoading, error } = useTips(activeRange, customStart, customEnd);
+
+    const weekLabels = useMemo(() => {
+        if (!data) return [];
+        const days = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+        return data.summary.total_tips.trend.map(t => days[new Date(t.date).getDay()]);
+    }, [data]);
+
+    if (isLoading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading Tips Analytics...</div>;
+    if (error || !data) return <div style={{ padding: 40, textAlign: 'center', color: 'red' }}>Error loading data.</div>;
+
+    const { summary, tips_by_area, breakdown } = data;
+
     return (
-        <div style={styles.container}>
-            {/* Top KPI row */}
-            <div style={styles.kpiRow}>
-                <KPICard
-                    label="TOTAL TIPS"
-                    value="€ 8.240"
-                    badge="+4.1% vs LY"
-                    badgeColor="#10b981"
-                    sub="YTD: € 42,800"
-                    data={totalTipsData}
-                    lineColor="#f97316"
-                    domain={[40, 80]}
+        <div style={{ background: "#f8fafc", minHeight: "100vh", padding: "24px", boxSizing: "border-box", fontFamily: "'Inter', sans-serif" }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <h1 style={{ fontSize: 20, fontWeight: 700, color: '#1e293b' }}>Staff Tips Analytics</h1>
+                <div style={{ fontSize: 11, color: '#64748b', background: '#fff', padding: '6px 12px', borderRadius: 99, border: '1px solid #e2e8f0' }}>
+                    Period: <span style={{ fontWeight: 700, color: '#6366f1', textTransform: 'capitalize' }}>{activeRange}</span>
+                </div>
+            </div>
+
+            {/* KPI Cards Row */}
+            <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
+                <StatCard
+                    label="Total Tips"
+                    value={summary.total_tips.value}
+                    sub={`▲ ${summary.total_tips.growth_ly}% vs LY`}
+                    metric={summary.total_tips}
+                    color="#6366f1"
+                    xLabels={weekLabels}
                 />
-                <KPICard
-                    label="AVG TIP / COVER"
-                    value="€ 2.89"
-                    badge="+3.2% vs LY"
-                    badgeColor="#10b981"
-                    sub=""
-                    data={avgTipData}
-                    lineColor="#818cf8"
-                    domain={[2.0, 3.0]}
+                <StatCard
+                    label="Avg Tip / Cover"
+                    value={summary.avg_tip_cover.value}
+                    sub={`▲ ${summary.avg_tip_cover.growth_ly}% vs LY`}
+                    metric={summary.avg_tip_cover}
+                    color="#10b981"
+                    xLabels={weekLabels}
                 />
-                <KPICard
-                    label="TIP RATE"
-                    value="4.5%"
-                    badge="+0.3pp vs LY"
-                    badgeColor="#10b981"
-                    sub="% of Gross Revenue"
-                    data={tipRateData}
-                    lineColor="#14b8a6"
-                    domain={[4.0, 5.0]}
+                <StatCard
+                    label="Tip Rate"
+                    value={summary.tip_rate.value}
+                    sub={`▲ ${summary.tip_rate.growth_ly}pp vs LY`}
+                    metric={summary.tip_rate}
+                    color="#f59e0b"
+                    xLabels={weekLabels}
+                    isCurrency={false}
+                    suffix="%"
                 />
-                <KPICard
-                    label="CASH TIPS"
-                    value="€ 1.240"
-                    badge=""
-                    badgeColor="#10b981"
-                    sub="15% of total"
-                    data={cashTipsData}
-                    lineColor="#eab308"
-                    domain={[140, 220]}
+                <StatCard
+                    label="Cash Tips"
+                    value={summary.cash_tips.value}
+                    sub={`${Math.round((summary.cash_tips.value / summary.total_tips.value) * 100) || 0}% of total`}
+                    metric={summary.cash_tips}
+                    color="#f43f5e"
+                    xLabels={weekLabels}
                 />
             </div>
 
-            {/* Bottom row */}
-            <div style={styles.bottomRow}>
-                {/* Tips by Area */}
-                <div style={{ ...styles.card, flex: 1 }}>
-                    <div style={styles.tableHeader}>
-                        <span style={styles.cardLabel}>TIPS BY AREA</span>
-                        <span style={styles.arrow}>→</span>
+            {/* Bottom Row */}
+            <div style={{ display: "flex", gap: 16 }}>
+                {/* Area Breakdown */}
+                <div style={{ flex: 1.5, background: "#fff", borderRadius: 16, padding: "24px 28px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid #f1f5f9" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+                        <span style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8", fontWeight: 700 }}>Tips by Area</span>
+                        <span style={{ color: "#cbd5e1", fontSize: 16 }}>→</span>
                     </div>
-                    <table style={styles.table}>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
                         <thead>
                             <tr>
-                                <th style={{ ...styles.th, textAlign: "left" }}>AREA</th>
-                                <th style={styles.th}>TOTAL TIPS</th>
-                                <th style={styles.th}>AVG / COVER</th>
-                                <th style={styles.th}>TIP RATE</th>
+                                {["Area", "Total Tips", "Avg / Order", "Tip Rate"].map((h) => (
+                                    <th key={h} style={{ textAlign: "left", fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "#94a3b8", fontWeight: 700, paddingBottom: 12, borderBottom: "1px solid #f1f5f9" }}>{h}</th>
+                                ))}
                             </tr>
                         </thead>
                         <tbody>
-                            {areaData.map((row, i) => (
-                                <tr key={i}>
-                                    <td style={{ ...styles.td, textAlign: "left", fontWeight: 500 }}>
-                                        {row.area}
-                                    </td>
-                                    <td style={styles.td}>{row.total}</td>
-                                    <td style={styles.td}>{row.avg}</td>
-                                    <td style={styles.td}>{row.rate}</td>
+                            {tips_by_area.map((row, i) => (
+                                <tr key={i} style={{ borderBottom: "1px solid #f8fafc" }}>
+                                    <td style={{ padding: "14px 0", fontSize: 13, color: "#1e293b", fontWeight: 600 }}>{row.area}</td>
+                                    <td style={{ padding: "14px 0", fontSize: 13, color: "#1e293b", fontWeight: 500 }}>{formatEuro(row.total_tips)}</td>
+                                    <td style={{ padding: "14px 0", fontSize: 13, color: "#475569" }}>€ {row.avg_per_order.toFixed(2)}</td>
+                                    <td style={{ padding: "14px 0", fontSize: 13, color: "#10b981", fontWeight: 600 }}>{row.tip_rate}%</td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
 
-                {/* Tips by Payment & Shift */}
-                <div style={{ ...styles.card, flex: 1 }}>
-                    <div style={styles.tableHeader}>
-                        <span style={styles.cardLabel}>TIPS BY PAYMENT &amp; SHIFT</span>
-                        <span style={styles.arrow}>→</span>
+                {/* Payment & Shift Breakdown */}
+                <div style={{ flex: 1, background: "#fff", borderRadius: 16, padding: "24px 28px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", border: "1px solid #f1f5f9" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                        <span style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8", fontWeight: 700 }}>Breakdown</span>
+                        <span style={{ color: "#cbd5e1", fontSize: 16 }}>→</span>
                     </div>
 
-                    <p style={styles.sectionTitle}>BY PAYMENT METHOD</p>
-
-                    {/* Card */}
-                    <div style={styles.barRow}>
-                        <span style={styles.barLabel}>Card</span>
-                        <div style={styles.barTrack}>
-                            <div
-                                style={{ ...styles.barFill, width: "85%", background: "#6366f1" }}
-                            />
-                        </div>
-                        <span style={styles.barMeta}>85% · € 7,004</span>
+                    <div style={{ marginBottom: 24 }}>
+                        <p style={{ fontSize: 10, fontWeight: 700, color: "#cbd5e1", textTransform: "uppercase", marginBottom: 12, letterSpacing: '0.05em' }}>By Payment Method</p>
+                        {breakdown.by_payment.map((item, i) => (
+                            <div key={i} style={{ marginBottom: 12 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
+                                    <span style={{ color: '#475569', fontWeight: 500 }}>{item.label}</span>
+                                    <span style={{ color: '#1e293b', fontWeight: 600 }}>{item.percentage}% · {formatEuro(item.value)}</span>
+                                </div>
+                                <div style={{ height: 6, background: '#f1f5f9', borderRadius: 99 }}>
+                                    <div style={{ width: `${item.percentage}%`, height: '100%', background: item.label === 'Card' ? '#6366f1' : '#f59e0b', borderRadius: 99 }} />
+                                </div>
+                            </div>
+                        ))}
                     </div>
 
-                    {/* Cash */}
-                    <div style={styles.barRow}>
-                        <span style={styles.barLabel}>Cash</span>
-                        <div style={styles.barTrack}>
-                            <div
-                                style={{ ...styles.barFill, width: "15%", background: "#f97316" }}
-                            />
-                        </div>
-                        <span style={styles.barMeta}>15% · € 1,236</span>
-                    </div>
-
-                    <p style={{ ...styles.sectionTitle, marginTop: 20 }}>BY SHIFT</p>
-
-                    {/* Day */}
-                    <div style={styles.barRow}>
-                        <span style={styles.barLabel}>Day</span>
-                        <div style={styles.barTrack}>
-                            <div
-                                style={{ ...styles.barFill, width: "32%", background: "#14b8a6" }}
-                            />
-                        </div>
-                        <span style={styles.barMeta}>32% · € 2,637</span>
-                    </div>
-
-                    {/* Night */}
-                    <div style={styles.barRow}>
-                        <span style={styles.barLabel}>Night</span>
-                        <div style={styles.barTrack}>
-                            <div
-                                style={{ ...styles.barFill, width: "68%", background: "#818cf8" }}
-                            />
-                        </div>
-                        <span style={styles.barMeta}>68% · € 5,603</span>
+                    <div>
+                        <p style={{ fontSize: 10, fontWeight: 700, color: "#cbd5e1", textTransform: "uppercase", marginBottom: 12, letterSpacing: '0.05em' }}>By Shift</p>
+                        {breakdown.by_shift.map((item, i) => (
+                            <div key={i} style={{ marginBottom: 12 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
+                                    <span style={{ color: '#475569', fontWeight: 500 }}>{item.label}</span>
+                                    <span style={{ color: '#1e293b', fontWeight: 600 }}>{item.percentage}% · {formatEuro(item.value)}</span>
+                                </div>
+                                <div style={{ height: 6, background: '#f1f5f9', borderRadius: 99 }}>
+                                    <div style={{ width: `${item.percentage}%`, height: '100%', background: item.label === 'Day' ? '#10b981' : '#8b5cf6', borderRadius: 99 }} />
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
         </div>
     );
 }
-
-// --- Styles ---
-const styles: Record<string, React.CSSProperties> = {
-    container: {
-        background: "#eceff3",
-        minHeight: "100vh",
-        padding: "20px",
-        fontFamily: "'DM Sans', 'Helvetica Neue', Arial, sans-serif",
-        boxSizing: "border-box",
-    },
-    kpiRow: {
-        display: "grid",
-        gridTemplateColumns: "repeat(4, 1fr)",
-        gap: 16,
-        marginBottom: 16,
-    },
-    bottomRow: {
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: 16,
-    },
-    card: {
-        background: "#f8fafc",
-        border: "1px solid #e5e7eb",
-        borderRadius: 14,
-        padding: "18px 20px 14px",
-        boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
-    },
-    cardLabel: {
-        fontSize: 10,
-        letterSpacing: "0.08em",
-        color: "#9ca3af",
-        fontWeight: 600,
-        margin: 0,
-        marginBottom: 6,
-    },
-    cardValue: {
-        fontSize: 30,
-        fontWeight: 300,
-        color: "#111827",
-        margin: 0,
-        lineHeight: 1.1,
-    },
-    badge: {
-        display: "inline-flex",
-        alignItems: "center",
-        fontSize: 11,
-        fontWeight: 600,
-        marginTop: 4,
-    },
-    cardSub: {
-        fontSize: 11,
-        color: "#9ca3af",
-        margin: "2px 0 0",
-    },
-    tableHeader: {
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: 16,
-    },
-    arrow: {
-        color: "#9ca3af",
-        fontSize: 16,
-        cursor: "pointer",
-    },
-    table: {
-        width: "100%",
-        borderCollapse: "collapse",
-    },
-    th: {
-        fontSize: 10,
-        letterSpacing: "0.07em",
-        color: "#9ca3af",
-        fontWeight: 600,
-        textAlign: "right",
-        paddingBottom: 8,
-        borderBottom: "1px solid #f3f4f6",
-    },
-    td: {
-        fontSize: 13,
-        color: "#374151",
-        textAlign: "right",
-        padding: "10px 0",
-        borderBottom: "1px solid #f9fafb",
-    },
-    sectionTitle: {
-        fontSize: 10,
-        letterSpacing: "0.07em",
-        color: "#9ca3af",
-        fontWeight: 600,
-        margin: "0 0 10px",
-    },
-    barRow: {
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        marginBottom: 10,
-    },
-    barLabel: {
-        fontSize: 13,
-        color: "#374151",
-        width: 40,
-        flexShrink: 0,
-    },
-    barTrack: {
-        flex: 1,
-        height: 6,
-        background: "#f3f4f6",
-        borderRadius: 99,
-        overflow: "hidden",
-    },
-    barFill: {
-        height: "100%",
-        borderRadius: 99,
-    },
-    barMeta: {
-        fontSize: 12,
-        color: "#6b7280",
-        whiteSpace: "nowrap",
-        minWidth: 90,
-        textAlign: "right",
-    },
-};

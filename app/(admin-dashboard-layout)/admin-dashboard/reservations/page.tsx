@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import React, { useMemo } from "react";
 import {
     LineChart,
     Line,
@@ -14,176 +14,93 @@ import {
     Cell,
     PieChart,
     Pie,
+    CartesianGrid,
 } from "recharts";
+import { useRange } from "@/components/range-context";
+import { useReservationsData } from "@/hooks/use-metrics";
 
-// ── Data ────────────────────────────────────────────────────────────────────
+// ── Styles ───────────────────────────────────────────────────────────────────
 
-const weeklyReservations = [
-    { day: "Mo", v: 220 }, { day: "Tu", v: 180 }, { day: "We", v: 260 },
-    { day: "Th", v: 200 }, { day: "Fr", v: 240 }, { day: "Sa", v: 290 }, { day: "Su", v: 210 },
-];
-const weeklyNoShows = [
-    { day: "Mo", v: 5 }, { day: "Tu", v: 6 }, { day: "We", v: 4 },
-    { day: "Th", v: 7 }, { day: "Fr", v: 5 }, { day: "Sa", v: 4 }, { day: "Su", v: 7 },
-];
-const weeklyCancellations = [
-    { day: "Mo", v: 3 }, { day: "Tu", v: 3.5 }, { day: "We", v: 2.5 },
-    { day: "Th", v: 4 }, { day: "Fr", v: 3 }, { day: "Sa", v: 3.8 }, { day: "Su", v: 3.5 },
-];
-const weeklyPartySize = [
-    { day: "Mo", v: 3.1 }, { day: "Tu", v: 3.2 }, { day: "We", v: 3.3 },
-    { day: "Th", v: 3.4 }, { day: "Fr", v: 3.5 }, { day: "Sa", v: 3.6 }, { day: "Su", v: 3.4 },
-];
+const cardStyle: React.CSSProperties = {
+    background: "#fff",
+    borderRadius: 16,
+    padding: "18px 20px",
+    boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+};
 
-const bookingsByDow = [
-    { day: "Mon", v: 170 }, { day: "Tue", v: 210 }, { day: "Wed", v: 175 },
-    { day: "Thu", v: 260 }, { day: "Fri", v: 300 }, { day: "Sat", v: 420 }, { day: "Sun", v: 310 },
-];
+const labelStyle: React.CSSProperties = {
+    fontSize: 10,
+    fontWeight: 700,
+    letterSpacing: "0.08em",
+    color: "#94a3b8",
+    textTransform: "uppercase",
+    marginBottom: 4,
+};
 
-const bookingsBySource = [
-    { name: "Online", value: 72, color: "#6366f1" },
-    { name: "Walk-in", value: 16, color: "#c7d2fe" },
-    { name: "Referral", value: 9, color: "#f97316" },
-    { name: "Other", value: 3, color: "#10b981" },
-];
+const PURPLE = "#6366f1";
+const SALMON = "#f87171";
+const ORANGE = "#fb923c";
 
-const countries = [
-    { flag: "ES", name: "Spain", pct: 48, count: 885, color: "#6366f1" },
-    { flag: "GB", name: "United Kingdom", pct: 18, count: 332, color: "#818cf8" },
-    { flag: "US", name: "United States", pct: 10, count: 184, color: "#93c5fd" },
-    { flag: "FR", name: "France", pct: 7, count: 129, color: "#34d399" },
-    { flag: "DE", name: "Germany", pct: 5, count: 92, color: "#fbbf24" },
-    { flag: "IT", name: "Italy", pct: 4, count: 74, color: "#f87171" },
-    { flag: "NL", name: "Netherlands", pct: 3, count: 55, color: "#a78bfa" },
-    { flag: "SE", name: "Sweden", pct: 2, count: 37, color: "#60a5fa" },
-    { flag: "AU", name: "Australia", pct: 1, count: 18, color: "#4ade80" },
-    { flag: "🌐", name: "Other", pct: 2, count: 36, color: "#94a3b8" },
-];
-
-const partyRows = [
-    { pax: "1", reserv: 92, pct: "5.0%", covers: 92, avg: 48, vsLY: "+2.1%", pos: true },
-    { pax: "2", reserv: 554, pct: "30.1%", covers: 1108, avg: 72, vsLY: "+4.8%", pos: true },
-    { pax: "3", reserv: 386, pct: "21.0%", covers: 1158, avg: 68, vsLY: "+3.2%", pos: true },
-    { pax: "4", reserv: 332, pct: "18.0%", covers: 1328, avg: 75, vsLY: "+6.1%", pos: true },
-    { pax: "5", reserv: 184, pct: "10.0%", covers: 920, avg: 71, vsLY: "+5.4%", pos: true },
-    { pax: "6", reserv: 147, pct: "8.0%", covers: 882, avg: 78, vsLY: "+8.2%", pos: true },
-    { pax: "7", reserv: 55, pct: "3.0%", covers: 385, avg: 82, vsLY: "+7.8%", pos: true },
-    { pax: "8", reserv: 37, pct: "2.0%", covers: 296, avg: 85, vsLY: "+9.4%", pos: true },
-    { pax: "9", reserv: 18, pct: "1.0%", covers: 162, avg: 88, vsLY: "+11.2%", pos: true },
-    { pax: "10+", reserv: 37, pct: "2.0%", covers: 463, avg: 95, vsLY: "+14.2%", pos: true },
-];
-
-const peakHours = [
-    { h: "13h", v: 80 }, { h: "14h", v: 100 }, { h: "15h", v: 90 },
-    { h: "16h", v: 70 }, { h: "17h", v: 85 }, { h: "18h", v: 110 },
-    { h: "19h", v: 160 }, { h: "20h", v: 210 }, { h: "21h", v: 240 },
-    { h: "22h", v: 200 }, { h: "23h", v: 130 },
-];
-
-// ── Sub-components ───────────────────────────────────────────────────────────
+// ── Sub-components ─────────────────────────────────────────────────────────────
 
 const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-    <div
-        style={{
-            background: "#fff",
-            borderRadius: 16,
-            padding: "18px 20px",
-            boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-        }}
-        className={className}
-    >
-        {children}
-    </div>
+    <div style={cardStyle} className={className}>{children}</div>
 );
 
-const ArrowIcon = ({ dir = "right" }: { dir?: "right" }) => (
-    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#b0b8c9" strokeWidth={2}>
+const ArrowIcon = () => (
+    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth={2}>
         <path d="M5 12h14M13 6l6 6-6 6" />
     </svg>
 );
 
-const UpArrow = () => (
-    <span style={{ color: "#10b981", fontSize: 11, fontWeight: 700 }}>▲</span>
-);
-const DownArrow = () => (
-    <span style={{ color: "#ef4444", fontSize: 11, fontWeight: 700 }}>▼</span>
-);
-
-// ── Stat Card ────────────────────────────────────────────────────────────────
-
-type ChartVariant = "line" | "area";
+const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+        return (
+            <div style={{ background: "#1e293b", color: "#fff", padding: "6px 10px", borderRadius: "8px", fontSize: "11px", boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)", border: "none" }}>
+                <p style={{ margin: "0 0 4px", color: "#94a3b8", fontWeight: 600 }}>{label}</p>
+                <div style={{ fontWeight: 700 }}>{payload[0].value}</div>
+            </div>
+        );
+    }
+    return null;
+};
 
 function StatCard({
-    label, value, badge, badgeColor, badgeBg, sub, data, lineColor, areaColor,
-    yTicks, xKey, variant,
-}: {
-    label: string; value: string; badge: string; badgeColor: string; badgeBg?: string;
-    sub?: string; data: { day: string; v: number }[]; lineColor: string; areaColor?: string;
-    yTicks: number[]; xKey?: string; variant: ChartVariant;
-}) {
-    const yDomain: [number, number] = [yTicks[0], yTicks[yTicks.length - 1]];
+    label, value, badge, badgeColor, sub, data = [], lineColor,
+    yTicks, variant = "line", areaColor
+}: any) {
     return (
         <Card>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <p style={{ fontSize: 10, letterSpacing: 1, color: "#a0a8b8", textTransform: "uppercase", margin: 0 }}>
-                    {label}
-                </p>
+                <span style={labelStyle}>{label}</span>
                 <ArrowIcon />
             </div>
-            <p style={{ fontSize: 36, fontWeight: 700, color: "#1a1f36", margin: "6px 0 2px", lineHeight: 1 }}>
-                {value}
-            </p>
-            {badge ? (
-                <div style={{
-                    display: "inline-flex", alignItems: "center", gap: 4,
-                    background: badgeBg || "transparent",
-                    borderRadius: 6, padding: badgeBg ? "2px 8px" : 0,
-                    marginBottom: 10,
-                }}>
-                    <span style={{ fontSize: 11, color: badgeColor, fontWeight: 600 }}>{badge}</span>
+            <div style={{ fontSize: 32, fontWeight: 700, color: "#1e293b", margin: "4px 0 2px", lineHeight: 1.1 }}>{value}</div>
+            {badge && (
+                <div style={{ display: "inline-flex", background: badgeColor + "15", color: badgeColor, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700, marginBottom: 8 }}>
+                    {badge}
                 </div>
-            ) : null}
-            {sub && <p style={{ fontSize: 11, color: "#a0a8b8", margin: "0 0 10px" }}>{sub}</p>}
+            )}
+            {sub && <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 8, fontWeight: 500 }}>{sub}</div>}
+            
             <ResponsiveContainer width="100%" height={70}>
                 {variant === "area" ? (
-                    <AreaChart data={data} margin={{ top: 4, right: 36, left: 0, bottom: 0 }}>
+                    <AreaChart data={data} margin={{ top: 4, right: 32, left: 0, bottom: 0 }}>
                         <defs>
                             <linearGradient id={`grad-${label.replace(/\s/g, "")}`} x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor={areaColor || lineColor} stopOpacity={0.22} />
+                                <stop offset="0%" stopColor={areaColor || lineColor} stopOpacity={0.18} />
                                 <stop offset="100%" stopColor={areaColor || lineColor} stopOpacity={0.02} />
                             </linearGradient>
                         </defs>
-                        <XAxis
-                            dataKey="day" tick={{ fontSize: 9.5, fill: "#b0b8c9" }}
-                            axisLine={false} tickLine={false}
-                        />
-                        <YAxis
-                            domain={yDomain} ticks={yTicks}
-                            tick={{ fontSize: 9.5, fill: "#b0b8c9" }} axisLine={false} tickLine={false}
-                            orientation="right" width={24}
-                        />
-                        <Area
-                            type="monotone" dataKey="v"
-                            stroke={lineColor} strokeWidth={1.5}
-                            fill={`url(#grad-${label.replace(/\s/g, "")})`}
-                            dot={{ r: 2.5, fill: lineColor, strokeWidth: 0 }}
-                        />
+                        <XAxis dataKey="day" hide />
+                        <YAxis orientation="right" domain={['auto', 'auto']} ticks={yTicks} tick={{ fontSize: 9, fill: "#cbd5e1" }} axisLine={false} tickLine={false} width={28} />
+                        <Area type="monotone" dataKey="v" stroke={lineColor} strokeWidth={1.8} fill={`url(#grad-${label.replace(/\s/g, "")})`} dot={{ r: 2, fill: lineColor, strokeWidth: 0 }} />
                     </AreaChart>
                 ) : (
-                    <LineChart data={data} margin={{ top: 4, right: 36, left: 0, bottom: 0 }}>
-                        <XAxis
-                            dataKey="day" tick={{ fontSize: 9.5, fill: "#b0b8c9" }}
-                            axisLine={false} tickLine={false}
-                        />
-                        <YAxis
-                            domain={yDomain} ticks={yTicks}
-                            tick={{ fontSize: 9.5, fill: "#b0b8c9" }} axisLine={false} tickLine={false}
-                            orientation="right" width={24}
-                        />
-                        <Line
-                            type="monotone" dataKey="v" stroke={lineColor}
-                            strokeWidth={1.5} dot={{ r: 2.5, fill: lineColor, strokeWidth: 0 }}
-                        />
+                    <LineChart data={data} margin={{ top: 4, right: 32, left: 0, bottom: 0 }}>
+                        <XAxis dataKey="day" hide />
+                        <YAxis orientation="right" domain={['auto', 'auto']} ticks={yTicks} tick={{ fontSize: 9, fill: "#cbd5e1" }} axisLine={false} tickLine={false} width={28} />
+                        <Line type="monotone" dataKey="v" stroke={lineColor} strokeWidth={1.8} dot={{ r: 2, fill: lineColor, strokeWidth: 0 }} />
                     </LineChart>
                 )}
             </ResponsiveContainer>
@@ -194,100 +111,115 @@ function StatCard({
 // ── Main Dashboard ───────────────────────────────────────────────────────────
 
 export default function ReservationsDashboard() {
+    const { activeRange, customStart, customEnd } = useRange();
+    const { data, isLoading, error } = useReservationsData(activeRange, customStart, customEnd);
+
+    const xLabels = useMemo(() => {
+        if (!data || !data.summary.total_reservations.trend) return [];
+        const days = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+        return (data.summary.total_reservations.trend as any[]).map((t: any) => days[new Date(t.date).getDay()]);
+    }, [data]);
+
+    if (isLoading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading Reservations Analytics...</div>;
+    if (error || !data) return <div style={{ padding: 40, textAlign: 'center', color: 'red' }}>Error loading data.</div>;
+
+    const { summary, bookings_by_source, bookings_by_day_of_week, peak_hours_chart, top_countries, party_size_table } = data;
+
     return (
-        <div
-            style={{
-                minHeight: "100vh",
-                background: "#f0f2f8",
-                padding: "24px",
-                fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
-                boxSizing: "border-box",
-            }}
-        >
+        <div style={{ background: "#f8fafc", minHeight: "100vh", padding: "24px", boxSizing: "border-box", fontFamily: "'Inter', sans-serif" }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <h1 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a' }}>Reservations Overview</h1>
+                <div style={{ fontSize: 11, color: '#64748b', background: '#fff', padding: '6px 12px', borderRadius: 99, border: '1px solid #e2e8f0' }}>
+                    Data period: <span style={{ fontWeight: 700, color: '#6366f1', textTransform: 'capitalize' }}>{activeRange}</span>
+                </div>
+            </div>
+
             {/* Row 1 – Stat Cards */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 16 }}>
                 <StatCard
-                    label="Total Reservations" value="1,842"
-                    badge="▲ +8.3% vs LW" badgeColor="#10b981" badgeBg="#d1fae5"
-                    data={weeklyReservations} lineColor="#6366f1"
-                    yTicks={[100, 200, 300]} variant="line"
+                    label="Total Reservations"
+                    value={summary.total_reservations.value.toLocaleString()}
+                    badge={`${(summary.total_reservations.growth_lw || 0) >= 0 ? '▲' : '▼'} ${Math.abs(summary.total_reservations.growth_lw || 0)}% vs LW`}
+                    badgeColor={(summary.total_reservations.growth_lw || 0) >= 0 ? "#10b981" : "#ef4444"}
+                    lineColor="#6366f1"
+                    data={(summary.total_reservations.trend as any[]).map((t: any, i: number) => ({ day: xLabels[i], v: t.value }))}
+                    yTicks={[0, 10, 20]}
                 />
                 <StatCard
-                    label="No-Shows" value="38"
-                    badge="2.1% rate" badgeColor="#ef4444"
-                    data={weeklyNoShows} lineColor="#f87171" areaColor="#f87171"
-                    yTicks={[2, 4, 6]} variant="area"
+                    label="No-Shows"
+                    value={summary.no_shows.count}
+                    sub={`${summary.no_shows.rate}% rate`}
+                    lineColor="#f87171"
+                    areaColor="#f87171"
+                    variant="area"
+                    data={summary.no_shows.trend.map((t: any, i: number) => ({ day: xLabels[i], v: t.value }))}
+                    yTicks={[0, 5, 10]}
                 />
                 <StatCard
-                    label="Cancellations" value="24"
-                    badge="▼ −2.1% vs LW" badgeColor="#ef4444" badgeBg="#fee2e2"
-                    data={weeklyCancellations} lineColor="#fb923c" areaColor="#fb923c"
-                    yTicks={[2, 3, 4]} variant="area"
+                    label="Cancellations"
+                    value={summary.cancellations.count}
+                    sub={`${summary.cancellations.rate}% rate`}
+                    lineColor="#fb923c"
+                    areaColor="#fb923c"
+                    variant="area"
+                    data={summary.cancellations.trend.map((t: any, i: number) => ({ day: xLabels[i], v: t.value }))}
+                    yTicks={[0, 5, 10]}
                 />
                 <StatCard
-                    label="Avg Party Size" value="3.4"
-                    badge="" badgeColor="#6366f1"
+                    label="Avg Party Size"
+                    value={Number(summary.avg_party_size.value).toFixed(1)}
                     sub="pax / reservation"
-                    data={weeklyPartySize} lineColor="#6366f1"
-                    yTicks={[2.0, 3.5]} variant="line"
+                    lineColor="#6366f1"
+                    data={(summary.avg_party_size.trend as any[]).map((t: any, i: number) => ({ day: xLabels[i], v: t.value }))}
+                    yTicks={[0, 4, 8]}
                 />
             </div>
 
-            {/* Row 2 – Bookings by Source + Bookings by Day of Week */}
+            {/* Row 2 – Source + Day of Week */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 16, marginBottom: 16 }}>
-                {/* Bookings by Source */}
                 <Card>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                        <p style={{ fontSize: 10, letterSpacing: 1, color: "#a0a8b8", textTransform: "uppercase", margin: 0 }}>
-                            Bookings by Source
-                        </p>
+                        <span style={labelStyle}>Bookings by Source</span>
                         <ArrowIcon />
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 32, marginTop: 12 }}>
                         <PieChart width={200} height={180}>
                             <Pie
-                                data={bookingsBySource} dataKey="value"
+                                data={bookings_by_source} dataKey="value"
                                 cx={90} cy={85} innerRadius={55} outerRadius={85}
-                                startAngle={90} endAngle={-270} stroke="none"
+                                stroke="none" paddingAngle={2}
                             >
-                                {bookingsBySource.map((entry) => (
-                                    <Cell key={entry.name} fill={entry.color} />
+                                {bookings_by_source.map((entry, index) => (
+                                    <Cell key={index} fill={[PURPLE, "#818cf8", "#fb923c", "#10b981"][index % 4]} />
                                 ))}
                             </Pie>
                         </PieChart>
                         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                            {bookingsBySource.map((s) => (
-                                <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: s.color, flexShrink: 0 }} />
-                                    <span style={{ fontSize: 12, color: "#4b5563" }}>{s.name}</span>
+                            {bookings_by_source.map((s, i) => (
+                                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: [PURPLE, "#818cf8", "#fb923c", "#10b981"][i % 4], flexShrink: 0 }} />
+                                    <span style={{ fontSize: 12, color: "#475569", fontWeight: 500 }}>{s.label}</span>
+                                    <span style={{ fontSize: 11, color: "#94a3b8", marginLeft: "auto" }}>{s.perc}%</span>
                                 </div>
                             ))}
                         </div>
                     </div>
                 </Card>
 
-                {/* Bookings by Day of Week */}
                 <Card>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                        <p style={{ fontSize: 10, letterSpacing: 1, color: "#a0a8b8", textTransform: "uppercase", margin: 0 }}>
-                            Bookings by Day of Week
-                        </p>
+                        <span style={labelStyle}>Bookings by Day of Week</span>
                         <ArrowIcon />
                     </div>
                     <ResponsiveContainer width="100%" height={180}>
-                        <BarChart data={bookingsByDow} barSize={42} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-                            <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#a0a8b8" }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fontSize: 10, fill: "#a0a8b8" }} axisLine={false} tickLine={false} />
-                            <Tooltip
-                                contentStyle={{ borderRadius: 8, fontSize: 12 }}
-                                cursor={{ fill: "rgba(99,102,241,0.06)" }}
-                            />
-                            <Bar dataKey="v" radius={[4, 4, 0, 0]}>
-                                {bookingsByDow.map((entry) => (
-                                    <Cell
-                                        key={entry.day}
-                                        fill={entry.day === "Sat" ? "#4f46e5" : "#c7d2fe"}
-                                    />
+                        <BarChart data={bookings_by_day_of_week} barSize={36} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+                            <CartesianGrid vertical={false} stroke="#f1f5f9" />
+                            <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#94a3b8", fontWeight: 600 }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                            <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(99,102,241,0.04)" }} />
+                            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                                {bookings_by_day_of_week.map((entry, index) => (
+                                    <Cell key={index} fill={entry.value === Math.max(...bookings_by_day_of_week.map(d => d.value)) ? PURPLE : "#c7d2fe"} />
                                 ))}
                             </Bar>
                         </BarChart>
@@ -297,106 +229,71 @@ export default function ReservationsDashboard() {
 
             {/* Row 3 – Country / Party Size / Peak Hours */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 1fr", gap: 16 }}>
-                {/* By Country */}
                 <Card>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                        <p style={{ fontSize: 10, letterSpacing: 1, color: "#a0a8b8", textTransform: "uppercase", margin: 0 }}>
-                            By Country – Top 10
-                        </p>
-                        <ArrowIcon />
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                        {countries.map((c) => (
-                            <div key={c.name}>
-                                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3, alignItems: "center" }}>
-                                    <span style={{ fontSize: 11.5, color: "#374151", display: "flex", alignItems: "center", gap: 5 }}>
-                                        <span style={{ fontSize: 13 }}>
-                                            {c.flag === "🌐" ? "🌐" : `${c.flag}`}
-                                        </span>
-                                        {c.name}
-                                    </span>
-                                    <span style={{ fontSize: 10.5, color: "#6b7280" }}>
-                                        {c.pct}% · {c.count}
-                                    </span>
+                    <span style={labelStyle}>By Country – Top 10</span>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 14 }}>
+                        {top_countries.map((c, i) => (
+                            <div key={i}>
+                                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, alignItems: "center" }}>
+                                    <span style={{ fontSize: 13, color: "#1e293b", fontWeight: 500 }}>{c.country}</span>
+                                    <span style={{ fontSize: 11, color: "#64748b", fontWeight: 600 }}>{c.perc}% · {c.count}</span>
                                 </div>
-                                <div style={{ background: "#f3f4f6", borderRadius: 999, height: 4 }}>
-                                    <div
-                                        style={{
-                                            width: `${c.pct}%`, height: 4, borderRadius: 999,
-                                            background: c.color, transition: "width .4s",
-                                        }}
-                                    />
+                                <div style={{ background: "#f1f5f9", borderRadius: 99, height: 4 }}>
+                                    <div style={{ width: `${c.perc}%`, height: "100%", borderRadius: 99, background: PURPLE }} />
                                 </div>
                             </div>
                         ))}
                     </div>
                 </Card>
 
-                {/* By Party Size */}
                 <Card>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                        <p style={{ fontSize: 10, letterSpacing: 1, color: "#a0a8b8", textTransform: "uppercase", margin: 0 }}>
-                            By Party Size
-                        </p>
-                        <ArrowIcon />
-                    </div>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11.5 }}>
+                    <span style={labelStyle}>By Party Size</span>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginTop: 10 }}>
                         <thead>
-                            <tr style={{ borderBottom: "1px solid #f3f4f6" }}>
+                            <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
                                 {["PAX", "RESERV.", "%", "COVERS", "AVG €", "VS LY"].map((h) => (
-                                    <th key={h} style={{ padding: "4px 6px", color: "#a0a8b8", fontWeight: 600, fontSize: 10, letterSpacing: 0.5, textAlign: h === "PAX" ? "left" : "right" }}>
-                                        {h}
-                                    </th>
+                                    <th key={h} style={{ padding: "8px 6px", color: "#94a3b8", fontWeight: 700, fontSize: 10, textAlign: h === "PAX" ? "left" : "right" }}>{h}</th>
                                 ))}
                             </tr>
                         </thead>
                         <tbody>
-                            {partyRows.map((r) => (
-                                <tr key={r.pax} style={{ borderBottom: "1px solid #f9fafb" }}>
-                                    <td style={{ padding: "5px 6px", color: r.pax === "10+" ? "#6366f1" : "#1a1f36", fontWeight: r.pax === "10+" ? 700 : 400 }}>{r.pax}</td>
-                                    <td style={{ padding: "5px 6px", textAlign: "right", color: "#374151" }}>{r.reserv.toLocaleString()}</td>
-                                    <td style={{ padding: "5px 6px", textAlign: "right", color: r.pct === "30.1%" ? "#6366f1" : "#6b7280", fontWeight: r.pct === "30.1%" ? 700 : 400 }}>{r.pct}</td>
-                                    <td style={{ padding: "5px 6px", textAlign: "right", color: "#374151" }}>{r.covers.toLocaleString()}</td>
-                                    <td style={{ padding: "5px 6px", textAlign: "right", color: "#374151" }}>€ {r.avg}</td>
-                                    <td style={{ padding: "5px 6px", textAlign: "right", color: "#10b981", fontWeight: 600 }}>{r.vsLY}</td>
+                            {party_size_table.rows.map((r, i) => (
+                                <tr key={i} style={{ borderBottom: "1px solid #f8fafc" }}>
+                                    <td style={{ padding: "8px 6px", fontWeight: 600, color: "#1e293b" }}>{r.pax}</td>
+                                    <td style={{ padding: "8px 6px", textAlign: "right", color: "#475569" }}>{r.reservations}</td>
+                                    <td style={{ padding: "8px 6px", textAlign: "right", color: r.perc > 20 ? PURPLE : "#64748b", fontWeight: r.perc > 20 ? 700 : 500 }}>{r.perc}%</td>
+                                    <td style={{ padding: "8px 6px", textAlign: "right", color: "#475569" }}>{r.covers}</td>
+                                    <td style={{ padding: "8px 6px", textAlign: "right", color: "#1e293b", fontWeight: 600 }}>€ {r.avg_spend.toFixed(0)}</td>
+                                    <td style={{ padding: "8px 6px", textAlign: "right", color: r.vs_ly >= 0 ? "#10b981" : "#ef4444", fontWeight: 700 }}>{r.vs_ly > 0 ? '+' : ''}{r.vs_ly}%</td>
                                 </tr>
                             ))}
-                            <tr style={{ borderTop: "2px solid #e5e7eb", background: "#f9fafb" }}>
-                                <td style={{ padding: "6px 6px", fontWeight: 700, color: "#374151" }}>Σ</td>
-                                <td style={{ padding: "6px 6px", textAlign: "right", fontWeight: 700, color: "#1a1f36" }}>1,842</td>
+                            {/* Sigma Total Row */}
+                            <tr style={{ borderTop: "2px solid #f1f5f9", background: "#fcfcfd" }}>
+                                <td style={{ padding: "10px 6px", fontWeight: 800, color: "#1e293b" }}>Σ</td>
+                                <td style={{ padding: "10px 6px", textAlign: "right", fontWeight: 800, color: "#1e293b" }}>{party_size_table.total.reservations}</td>
                                 <td />
-                                <td style={{ padding: "6px 6px", textAlign: "right", fontWeight: 700, color: "#1a1f36" }}>6,794</td>
-                                <td style={{ padding: "6px 6px", textAlign: "right", fontWeight: 700, color: "#1a1f36" }}>€ 74</td>
+                                <td style={{ padding: "10px 6px", textAlign: "right", fontWeight: 800, color: "#1e293b" }}>{party_size_table.total.covers}</td>
+                                <td style={{ padding: "10px 6px", textAlign: "right", fontWeight: 800, color: "#1e293b" }}>€ {party_size_table.total.avg_spend.toFixed(0)}</td>
                                 <td />
                             </tr>
                         </tbody>
                     </table>
                 </Card>
 
-                {/* Peak Hours */}
                 <Card>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                        <p style={{ fontSize: 10, letterSpacing: 1, color: "#a0a8b8", textTransform: "uppercase", margin: 0 }}>
-                            Peak Hours
-                        </p>
-                        <ArrowIcon />
-                    </div>
+                    <span style={labelStyle}>Peak Hours</span>
                     <ResponsiveContainer width="100%" height={220}>
-                        <AreaChart data={peakHours} margin={{ top: 8, right: 8, left: -28, bottom: 0 }}>
+                        <AreaChart data={peak_hours_chart} margin={{ top: 8, right: 8, left: -28, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="peakGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#f97316" stopOpacity={0.25} />
-                                    <stop offset="95%" stopColor="#f97316" stopOpacity={0.02} />
+                                    <stop offset="5%" stopColor={ORANGE} stopOpacity={0.2} />
+                                    <stop offset="95%" stopColor={ORANGE} stopOpacity={0.01} />
                                 </linearGradient>
                             </defs>
-                            <XAxis dataKey="h" tick={{ fontSize: 10, fill: "#a0a8b8" }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fontSize: 10, fill: "#a0a8b8" }} axisLine={false} tickLine={false} />
-                            <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-                            <Area
-                                type="monotone" dataKey="v" stroke="#f97316" strokeWidth={2}
-                                fill="url(#peakGrad)"
-                                dot={{ r: 3, fill: "#f97316", strokeWidth: 0 }}
-                            />
+                            <XAxis dataKey="hour" tickFormatter={(v) => `${v}h`} tick={{ fontSize: 10, fill: "#94a3b8", fontWeight: 600 }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Area type="monotone" dataKey="count" stroke={ORANGE} strokeWidth={2.5} fill="url(#peakGrad)" dot={{ r: 3, fill: ORANGE, strokeWidth: 0 }} />
                         </AreaChart>
                     </ResponsiveContainer>
                 </Card>
