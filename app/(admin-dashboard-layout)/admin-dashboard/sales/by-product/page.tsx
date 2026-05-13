@@ -135,13 +135,15 @@ export default function SalesByProductPage() {
     const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
     const filteredAndSortedData = useMemo(() => {
-        if (!data) return [];
+        if (!data || !data.table || !data.table.data) return [];
         // Note: In a real professional app, searching and sorting would also be server-side
         // but for now we'll handle the current page's data
-        let items = [...data.table.data].filter(item => 
-            item.product.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.category.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+        let items = [...data.table.data].filter(item => {
+            const itemName = (item.name || (item as any).product || "").toLowerCase();
+            const categoryName = (item.category || "").toLowerCase();
+            const search = searchQuery.toLowerCase();
+            return itemName.includes(search) || categoryName.includes(search);
+        });
         
         items.sort((a, b) => {
             const valA = a[sortKey];
@@ -173,7 +175,13 @@ export default function SalesByProductPage() {
             {/* KPI Cards */}
             <div style={{ display: "flex", gap: 16, marginBottom: 24 }}>
                 <KpiCard label="Total SKUs" value={summary.total_skus.value} subValue="Active products" metric={summary.total_skus} color="#6366f1" />
-                <KpiCard label="Units Sold" value={fmtNum(summary.units_sold.value)} subValue={`${summary.units_sold.growth_lw! >= 0 ? '▲' : '▼'} ${Math.abs(summary.units_sold.growth_lw!)}% vs LW`} metric={summary.units_sold} color="#10b981" />
+                <KpiCard 
+                    label="Units Sold" 
+                    value={fmtNum(summary.units_sold.value)} 
+                    subValue={summary.units_sold.growth_lw !== undefined ? `${summary.units_sold.growth_lw >= 0 ? '▲' : '▼'} ${Math.abs(summary.units_sold.growth_lw)}% vs LW` : "This period"} 
+                    metric={summary.units_sold} 
+                    color="#10b981" 
+                />
                 <KpiCard label="Top Category" value={summary.top_category.name || ""} subValue={`${summary.top_category.percentage}% of units`} metric={summary.top_category} color="#f59e0b" />
                 <KpiCard label="Avg Price / Unit" value={(typeof summary.avg_price_unit.value === 'string' ? parseFloat(summary.avg_price_unit.value) : summary.avg_price_unit.value).toFixed(2)} subValue="This period" metric={summary.avg_price_unit} color="#8b5cf6" prefix="€" />
             </div>
@@ -200,16 +208,16 @@ export default function SalesByProductPage() {
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                         <thead>
                             <tr style={{ background: "#fcfcfd" }}>
-                                {["product", "category", "units_sold", "gross_revenue", "net_revenue"].map((key) => (
+                                {["name", "category", "qty", "gross_revenue", "net_revenue"].map((key) => (
                                     <th 
                                         key={key}
                                         onClick={() => {
                                             if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
                                             else { setSortKey(key as any); setSortDir('desc'); }
                                         }}
-                                        style={{ padding: "12px 20px", textAlign: key === "product" ? "left" : "right", fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", cursor: "pointer", userSelect: "none" }}
+                                        style={{ padding: "12px 20px", textAlign: key === "name" ? "left" : "right", fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", cursor: "pointer", userSelect: "none" }}
                                     >
-                                        {key.replace("_", " ")} {sortKey === key ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
+                                        {key === "qty" ? "Units Sold" : key.replace("_", " ")} {sortKey === key ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
                                     </th>
                                 ))}
                             </tr>
@@ -217,11 +225,11 @@ export default function SalesByProductPage() {
                         <tbody>
                             {filteredAndSortedData.map((item, i) => (
                                 <tr key={i} style={{ borderBottom: "1px solid #f1f5f9", transition: "background 0.2s" }} onMouseEnter={(e) => e.currentTarget.style.background = "#f8fafc"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
-                                    <td style={{ padding: "16px 20px", fontSize: 13, fontWeight: 600, color: "#1e293b" }}>{item.product}</td>
+                                    <td style={{ padding: "16px 20px", fontSize: 13, fontWeight: 600, color: "#1e293b" }}>{item.name || (item as any).product}</td>
                                     <td style={{ padding: "16px 20px", textAlign: "right" }}>
                                         <span style={{ padding: "4px 10px", borderRadius: 99, fontSize: 11, fontWeight: 600, background: "#f1f5f9", color: "#64748b" }}>{item.category}</span>
                                     </td>
-                                    <td style={{ padding: "16px 20px", textAlign: "right", fontSize: 13, color: "#1e293b", fontWeight: 500 }}>{fmtNum(item.units_sold)}</td>
+                                    <td style={{ padding: "16px 20px", textAlign: "right", fontSize: 13, color: "#1e293b", fontWeight: 500 }}>{fmtNum(item.qty ?? (item as any).units_sold)}</td>
                                     <td style={{ padding: "16px 20px", textAlign: "right", fontSize: 13, color: "#1e293b", fontWeight: 500 }}>{fmtEur(item.gross_revenue)}</td>
                                     <td style={{ padding: "16px 20px", textAlign: "right", fontSize: 13, color: "#6366f1", fontWeight: 600 }}>{fmtEur(item.net_revenue)}</td>
                                 </tr>

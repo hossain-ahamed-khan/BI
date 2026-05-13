@@ -93,6 +93,32 @@ export interface OverviewData {
   end_date: string;
 }
 
+export interface AreaTrend {
+  period: string;
+  gross_revenue: number;
+  net_revenue: number;
+  discounts: number;
+  covers: number;
+  avg_ticket: number;
+}
+
+export interface AreaDataRow {
+  area: string;
+  gross_revenue: number;
+  gross_revenue_ly_growth: number;
+  net_revenue: number;
+  net_revenue_ly_growth: number;
+  discounts: number;
+  discounts_ly_growth: number;
+  covers: number;
+  covers_ly_growth: number;
+  avg_ticket: number;
+  avg_ticket_ly_growth: number;
+  returning_guests_perc: number;
+  perc_of_total: number;
+  trends: AreaTrend[];
+}
+
 export interface SalesByAreaData {
   summary: {
     total_net_revenue: number;
@@ -103,14 +129,7 @@ export interface SalesByAreaData {
     areas: string[];
     data: any[];
   };
-  table: {
-    area: string;
-    revenue: number;
-    order_count: number;
-    avg_order_value: number;
-    growth_ly: number;
-    perc_of_total: number;
-  }[];
+  table: AreaDataRow[];
   start_date: string;
   end_date: string;
 }
@@ -168,9 +187,9 @@ export interface ProductSummaryMetric {
 }
 
 export interface ProductTableItem {
-  product: string;
+  name: string;
   category: string;
-  units_sold: number;
+  qty: number;
   gross_revenue: number;
   net_revenue: number;
 }
@@ -198,11 +217,13 @@ export interface TrendSummaryMetric extends ProductSummaryMetric {
 }
 
 export interface TopListItem {
+  name: string;
   product: string;
   qty: number;
 }
 
 export interface ParetoItem {
+  name: string;
   product: string;
   category: string;
   qty: number;

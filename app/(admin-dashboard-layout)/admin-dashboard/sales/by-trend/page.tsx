@@ -197,7 +197,7 @@ function TopList({
                         {i + 1}
                     </span>
                     <span style={{ ...styles.listCol, flex: 1, fontSize: 13, color: "#1e293b", fontWeight: 500 }}>
-                        {item.product}
+                        {item.name || item.product}
                     </span>
                     <span style={{ ...styles.listColRight, fontSize: 13, color: "#64748b", fontWeight: 600 }}>
                         {item.qty}
@@ -239,7 +239,7 @@ function ParetoTable({ items, totalCount, currentPage, pageSize, onPageChange, o
                                 }}
                             >
                                 <td style={styles.tdCell}>{offset + i + 1}</td>
-                                <td style={{ ...styles.tdCell, fontWeight: 600, color: "#1e293b" }}>{item.product}</td>
+                                <td style={{ ...styles.tdCell, fontWeight: 600, color: "#1e293b" }}>{item.name || item.product}</td>
                                 <td style={{ ...styles.tdCell, color: "#64748b" }}>
                                     <span style={{ background: '#f1f5f9', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600 }}>{item.category}</span>
                                 </td>

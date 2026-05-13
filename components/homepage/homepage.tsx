@@ -629,7 +629,7 @@ export default function DashboardHomePage() {
                                         {row.area}
                                     </td>
                                     <td style={{ textAlign: "right", color: "#0f172a" }}>€ {Math.round(row.revenue).toLocaleString()}</td>
-                                    <td style={{ textAlign: "right", color: "#64748b" }}>€ {row.avg_order_value.toFixed(0)}</td>
+                                    <td style={{ textAlign: "right", color: "#64748b" }}>€ {(row.avg_order_value || 0).toFixed(0)}</td>
                                     <td style={{ textAlign: "right" }}>
                                         <span
                                             style={{
