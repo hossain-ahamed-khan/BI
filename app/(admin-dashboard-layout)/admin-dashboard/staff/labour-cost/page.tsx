@@ -123,8 +123,8 @@ export default function LabourCostDashboard() {
                 <KpiCard
                     title="Labour Cost"
                     value={formatEuro(summary.labor_cost.value as number)}
-                    delta={`▲ +${summary.labor_cost.growth_lw}% vs LW`}
-                    deltaPositive={true}
+                    delta={summary.labor_cost.growth_lw !== undefined ? `${summary.labor_cost.growth_lw >= 0 ? '▲ +' : '▼ -'}${Math.abs(summary.labor_cost.growth_lw)}% vs LW` : "This period"}
+                    deltaPositive={summary.labor_cost.growth_lw !== undefined ? summary.labor_cost.growth_lw <= 0 : true}
                     subtitle={`YTD: ${formatEuro(summary.labor_cost.ytd || 0)}`}
                     trend={indicators.map(i => i.labor_cost)}
                     color="#6366f1"
@@ -133,9 +133,9 @@ export default function LabourCostDashboard() {
                 <KpiCard
                     title="Labour Cost %"
                     value={`${summary.labor_cost_perc.value}%`}
-                    delta={`▲ +${(summary.labor_cost_perc.value as number - summary.labor_cost_perc.target!).toFixed(1)}pp vs Target`}
-                    deltaPositive={true}
-                    subtitle={`Target: < ${summary.labor_cost_perc.target}%`}
+                    delta={summary.labor_cost_perc.target !== undefined ? `${(summary.labor_cost_perc.value as number) > summary.labor_cost_perc.target ? '▲ +' : '▼ -'}${Math.abs((summary.labor_cost_perc.value as number) - (summary.labor_cost_perc.target || 0)).toFixed(1)}pp vs Target` : "This period"}
+                    deltaPositive={(summary.labor_cost_perc.value as number) <= (summary.labor_cost_perc.target || 30)}
+                    subtitle={summary.labor_cost_perc.target !== undefined ? `Target: < ${summary.labor_cost_perc.target}%` : "vs target"}
                     trend={indicators.map(i => i.lc_perc)}
                     color="#f59e0b"
                     xLabels={xLabels}
@@ -143,8 +143,8 @@ export default function LabourCostDashboard() {
                 <KpiCard
                     title="Hours Worked"
                     value={`${summary.hours_worked.value}h`}
-                    delta={`▼ -${summary.hours_worked.growth_lw}% vs LW`}
-                    deltaPositive={false}
+                    delta={summary.hours_worked.growth_lw !== undefined ? `${summary.hours_worked.growth_lw >= 0 ? '▲ +' : '▼ -'}${Math.abs(summary.hours_worked.growth_lw)}% vs LW` : "This period"}
+                    deltaPositive={summary.hours_worked.growth_lw !== undefined ? summary.hours_worked.growth_lw <= 0 : true}
                     subtitle="Current period"
                     trend={indicators.map(i => i.hours_worked)}
                     color="#6366f1"
